@@ -13,4 +13,12 @@ export class Provider {
     yield* []
     throw new Error('Provider.stream not implemented')
   }
+
+  async generate(messages, options = {}) {
+    let text = ''
+    for await (const event of this.stream(messages, [], options)) {
+      if (event.type === 'token') text += event.content
+    }
+    return text
+  }
 }

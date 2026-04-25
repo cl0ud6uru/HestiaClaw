@@ -19,8 +19,11 @@ import { createProvider } from './agent/providers/index.js'
 import { AgentSession } from './agent/session.js'
 import { ToolRegistry } from './agent/tools/registry.js'
 import { registerWebSearch } from './agent/tools/builtin/web-search.js'
+import { registerMemoryTools } from './agent/tools/builtin/memory-file.js'
 import { McpClientManager } from './agent/mcp/client.js'
 import { loadSkills } from './agent/skills.js'
+import { runConsolidation } from './agent/memory-consolidation.js'
+import cron from 'node-cron'
 
 dotenv.config()
 
@@ -46,6 +49,7 @@ const NEO4J_USER = process.env.NEO4J_USER || ''
 const NEO4J_PASSWORD = process.env.NEO4J_PASSWORD || ''
 
 const AGENT_CONFIG_PATH = path.resolve(ROOT_DIR, 'agent.config.json')
+const MEMORY_PATH = path.resolve(DATA_DIR, 'MEMORY.md')
 let agentConfig = null
 try {
   agentConfig = JSON.parse(fs.readFileSync(AGENT_CONFIG_PATH, 'utf8'))
@@ -59,6 +63,11 @@ if (!SESSION_SECRET) {
 
 fs.mkdirSync(path.dirname(DATABASE_PATH), { recursive: true })
 fs.mkdirSync(DATA_DIR, { recursive: true })
+
+if (!fs.existsSync(MEMORY_PATH)) {
+  fs.writeFileSync(MEMORY_PATH, '# Hestia Memory\n\n*No pinned memories yet. The consolidation cron will populate this file.*\n', 'utf8')
+  console.log('[memory] data/MEMORY.md created')
+}
 
 if (TRUST_PROXY) {
   app.set('trust proxy', Number.isNaN(Number(TRUST_PROXY)) ? TRUST_PROXY : Number(TRUST_PROXY))
@@ -637,6 +646,7 @@ if (agentConfig) {
   const agentSession = new AgentSession(db)
   const registry = new ToolRegistry()
   registerWebSearch(registry)
+  registerMemoryTools(registry, MEMORY_PATH)
 
   mcpManager = new McpClientManager(registry)
   await mcpManager.init(agentConfig.mcpServers || {})
@@ -661,6 +671,7 @@ if (agentConfig) {
       ? null
       : new ApprovalManager({ timeoutMs: Number(agentConfig.harness?.approvalTimeoutMs) || 60000 })
     const events = new AgentEventBus()
+    const consolidate = () => runConsolidation({ provider, registry, memoryPath: MEMORY_PATH })
     const agentRouter = createAgentRouter({
       provider,
       session: agentSession,
@@ -672,9 +683,18 @@ if (agentConfig) {
       settings: harnessSettings,
       skillsDir: path.join(ROOT_DIR, 'skills'),
       configPath: AGENT_CONFIG_PATH,
+      memoryPath: MEMORY_PATH,
+      onConsolidate: consolidate,
     })
     app.use('/api/agent', requireSameOrigin, requireAuth, agentRouter)
     console.log(`[agent] Harness ready — ${registry.size} tool(s) registered`)
+
+    // Daily memory consolidation at 3 AM
+    cron.schedule('0 3 * * *', () => {
+      console.log('[consolidation] Running scheduled daily consolidation...')
+      consolidate().catch(err => console.error('[consolidation] Scheduled run failed:', err.message))
+    })
+    console.log('[consolidation] Daily cron scheduled at 03:00')
   }
 } else {
   console.log('[agent] No agent.config.json found — native harness disabled. Using N8N mode only.')

@@ -35,5 +35,17 @@ services:
       neo4j:
         condition: service_healthy
 
+  ha-mcp:
+    image: ghcr.io/homeassistant-ai/ha-mcp:latest
+    command: ["ha-mcp-web"]
+    ports:
+      - "8002:8086"
+    environment:
+      HOMEASSISTANT_URL: "${HA_URL}"
+      HOMEASSISTANT_TOKEN: "${HA_TOKEN}"
+      ENABLE_WEBSOCKET: "true"
+      LOG_LEVEL: "INFO"
+    restart: unless-stopped
+
 volumes:
   neo4j_data:

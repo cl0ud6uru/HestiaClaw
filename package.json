@@ -25,6 +25,7 @@
     "express-session": "^1.19.0",
     "helmet": "^8.1.0",
     "neo4j-driver": "^5.28.1",
+    "node-cron": "^4.2.1",
     "openai": "^6.34.0",
     "react": "^19.2.5",
     "react-dom": "^19.2.5",

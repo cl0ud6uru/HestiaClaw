@@ -29,12 +29,13 @@ npm run dev
 **Services:**
 - `neo4j` — `neo4j:2026-community` with GDS plugin auto-installed (`NEO4J_PLUGINS`); browser at `http://localhost:7474`
 - `graphiti` — `zepai/graphiti-mcp:latest`; MCP endpoint at `http://localhost:8001/mcp` (dev only — dev compose maps host 8001 → container 8000)
+- `ha-mcp` — `ghcr.io/homeassistant-ai/ha-mcp:latest`; 87+ Home Assistant tools; MCP endpoint at `http://localhost:8002/mcp` (dev, host port 8002 → container 8086) / `http://ha-mcp:8086/mcp` (prod). Reads `HA_URL` + `HA_TOKEN` from `.env`, remapped to `HOMEASSISTANT_URL`/`HOMEASSISTANT_TOKEN` inside the container.
 - `hestia` — production build of this app (production compose only)
 
-**Graphiti MCP URL:**
-- Inside Docker Compose (prod): `http://graphiti:8000/mcp` (internal port 8000)
-- Native dev: `http://localhost:8001/mcp` (dev compose maps host 8001 → container 8000)
-Set this in `agent.config.json` under `mcpServers.graphiti.url`.
+**MCP service URLs:**
+- Graphiti (prod): `http://graphiti:8000/mcp` · (dev): `http://localhost:8001/mcp`
+- ha-mcp (prod): `http://ha-mcp:8086/mcp` · (dev): `http://localhost:8002/mcp`
+Set these in `agent.config.json` under `mcpServers.<name>.url`.
 
 **Production Docker extra files** (required, not committed — generated on first deploy):
 - `graphiti_mcp_server.py` — patched copy of the graphiti MCP server that passes `host='0.0.0.0'` to FastMCP, disabling DNS-rebinding protection that otherwise blocks cross-container connections
@@ -128,6 +129,8 @@ Each line is a JSON object: `{ type: "begin"|"item"|"end", metadata: { nodeId, n
 | `server/agent/providers/index.js` | Provider factory keyed by `config.type` |
 | `server/agent/tools/registry.js` | Tool registry — register, list definitions, execute by name |
 | `server/agent/tools/builtin/web-search.js` | Optional SearXNG web search tool (activates if `SEARXNG_URL` is set) |
+| `server/agent/tools/builtin/memory-file.js` | `read_memory` + `write_memory` builtin tools for `data/MEMORY.md` |
+| `server/agent/memory-consolidation.js` | Daily consolidation job — fetches Graphiti episodes → LLM → prunes dupes → writes MEMORY.md |
 | `server/agent/mcp/client.js` | MCP stdio client — connects servers from `agent.config.json`, registers their tools |
 | `src/components/AgentPanel.jsx` | Agent Harness diagnostics panel — provider/model dropdowns (live-fetched), MCP server status, tool metadata, recent runs, runtime settings |
 
@@ -166,6 +169,32 @@ Each line is a JSON object: `{ type: "begin"|"item"|"end", metadata: { nodeId, n
 **Harness controls**: risky MCP write tools require browser approval before execution. Long conversations use bounded context with a generated summary injected into the effective system prompt. Agent conversations can be forked from the Agent Harness panel, copying server-side history to a new conversation id.
 
 **Runtime provider & model switching**: `POST /api/agent/settings` accepts a `provider` field (`anthropic` | `openai`) that hot-swaps the active provider instance without a server restart. `GET /api/agent/models?provider=X` calls the provider's models API and returns a sorted list (cached 5 min per provider). Both `AnthropicProvider` and `OpenAIProvider` expose a `listModels()` method used by this endpoint.
+
+## Memory system
+
+Hestia uses a layered memory architecture:
+
+**Layer 1 — Pinned facts (`data/MEMORY.md`):**
+- Lives at `data/MEMORY.md`, mounted in the `hestia_data` Docker volume at `/app/data/MEMORY.md`
+- Injected into every agent turn as a `## Pinned Memory` section in the effective system prompt
+- Agent can update it via the `write_memory` builtin tool (medium risk → requires approval)
+- Daily consolidation cron regenerates it from Graphiti episodes
+
+**Layer 2 — Active memory recall (per-turn Graphiti search):**
+- Before each agent turn, the server calls `graphiti__search_nodes` with the user message as query
+- Top 5 results (≤ 2000 chars) are injected as `## Active Memory Recall` in the effective system prompt
+- 2-second timeout — fails silently if Graphiti is slow
+
+**Layer 3 — Graphiti long-term graph:**
+- All conversations still write episodes to Graphiti
+- Group IDs: `hestia_user` (personal/general), `hestia_home` (devices, rooms, automations)
+- The agent calls Graphiti tools directly for targeted reads, writes, and deletes
+
+**Consolidation (`POST /api/agent/consolidate`):**
+- Fetches last 100 episodes from each group, sends to LLM for analysis
+- LLM returns `{ episodes_to_delete: [...], memory_md_content: "..." }`
+- Deletes duplicate/junk episodes; writes new `data/MEMORY.md`
+- Also runs daily at 03:00 via `node-cron`
 
 ## Styling conventions
 

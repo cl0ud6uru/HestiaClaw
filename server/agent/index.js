@@ -1,10 +1,11 @@
 import { Router } from 'express'
 import { readFile, writeFile } from 'node:fs/promises'
+import { readFileSync } from 'node:fs'
 import { runAgentLoop } from './loop.js'
 import { createProvider } from './providers/index.js'
 import { loadSkills } from './skills.js'
 
-export function createAgentRouter({ provider, session, registry, systemPrompt, mcpManager, approvals, events, settings = {}, skillsDir = null, configPath = null }) {
+export function createAgentRouter({ provider, session, registry, systemPrompt, mcpManager, approvals, events, settings = {}, skillsDir = null, configPath = null, memoryPath = null, onConsolidate = null }) {
   const getSkills = skillsDir ? () => loadSkills(skillsDir) : () => Promise.resolve([])
   const router = Router()
   let currentProvider = provider
@@ -48,6 +49,24 @@ export function createAgentRouter({ provider, session, registry, systemPrompt, m
       }
     }
 
+    // Read pinned memory
+    let memorySummary = ''
+    if (memoryPath) {
+      try { memorySummary = readFileSync(memoryPath, 'utf8') } catch { /* file may not exist yet */ }
+    }
+
+    // Active memory recall — fast Graphiti search keyed on user message (2s timeout)
+    let activeMemory = ''
+    if (registry.has('graphiti__search_nodes')) {
+      try {
+        const recall = await Promise.race([
+          registry.execute('graphiti__search_nodes', { query: message, group_ids: ['hestia_user', 'hestia_home'], max_results: 5 }),
+          new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 2000)),
+        ])
+        if (recall) activeMemory = String(recall).slice(0, 2000)
+      } catch { /* fail silently — Graphiti may be slow or down */ }
+    }
+
     await runAgentLoop(res, {
       provider: currentProvider,
       session,
@@ -58,6 +77,8 @@ export function createAgentRouter({ provider, session, registry, systemPrompt, m
       approvals: runtimeSettings.approvalsEnabled ? approvals : null,
       events,
       skills,
+      memorySummary,
+      activeMemory,
       settings: {
         contextMaxMessages: runtimeSettings.contextMaxMessages,
         compactionEnabled: runtimeSettings.compactionEnabled,
@@ -218,6 +239,19 @@ export function createAgentRouter({ provider, session, registry, systemPrompt, m
     }
     session.forkConversation(sourceConversationId, targetConversationId)
     return res.json({ ok: true })
+  })
+
+  router.post('/consolidate', async (req, res) => {
+    if (!onConsolidate) {
+      return res.status(503).json({ error: 'Memory consolidation is not configured.' })
+    }
+    try {
+      const result = await onConsolidate()
+      return res.json({ ok: true, ...result })
+    } catch (err) {
+      console.error('[agent] Consolidation error:', err.message)
+      return res.status(500).json({ error: 'Consolidation failed.', detail: err.message })
+    }
   })
 
   return router

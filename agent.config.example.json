@@ -15,12 +15,7 @@
       "url": "http://localhost:8001/mcp"
     },
     "home-assistant": {
-      "command": "uvx",
-      "args": ["hass-mcp"],
-      "env": {
-        "HA_URL": "${HA_URL}",
-        "HA_TOKEN": "${HA_TOKEN}"
-      }
+      "url": "http://localhost:8002/mcp"
     }
   }
 }

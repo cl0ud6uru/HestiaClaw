@@ -38,6 +38,16 @@ services:
       neo4j:
         condition: service_healthy
 
+  ha-mcp:
+    image: ghcr.io/homeassistant-ai/ha-mcp:latest
+    command: ["ha-mcp-web"]
+    environment:
+      HOMEASSISTANT_URL: "${HA_URL}"
+      HOMEASSISTANT_TOKEN: "${HA_TOKEN}"
+      ENABLE_WEBSOCKET: "true"
+      LOG_LEVEL: "INFO"
+    restart: unless-stopped
+
   hestia:
     build: .
     env_file: .env
@@ -53,6 +63,7 @@ services:
       - edge
     depends_on:
       - graphiti
+      - ha-mcp
 
 volumes:
   neo4j_data:

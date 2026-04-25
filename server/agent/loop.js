@@ -19,8 +19,16 @@ function emit(res, event) {
  *   { type: 'done' }
  *   { type: 'error',      message }
  */
-function buildEffectiveSystemPrompt(systemPrompt, summary, skills = []) {
+function buildEffectiveSystemPrompt(systemPrompt, summary, skills = [], memorySummary = '', activeMemory = '') {
   let prompt = systemPrompt
+
+  if (memorySummary) {
+    prompt += `\n\n## Pinned Memory\nThese are your confirmed high-confidence long-term memories. Trust these unless directly contradicted.\n\n${memorySummary}`
+  }
+
+  if (activeMemory) {
+    prompt += `\n\n## Active Memory Recall\nRelevant memories retrieved for this turn:\n\n${activeMemory}`
+  }
 
   const invocableSkills = skills.filter(s => !s.disableModelInvocation)
   if (invocableSkills.length > 0) {
@@ -45,6 +53,8 @@ export async function runAgentLoop(res, {
   events,
   settings = {},
   skills = [],
+  memorySummary = '',
+  activeMemory = '',
 }) {
   const isAnthropic = provider instanceof AnthropicProvider
   const isOpenAI = provider instanceof OpenAIProvider
@@ -68,7 +78,7 @@ export async function runAgentLoop(res, {
     maxMessages: settings.contextMaxMessages || DEFAULT_CONTEXT_MAX_MESSAGES,
     compactionEnabled: settings.compactionEnabled !== false,
   })
-  const effectiveSystemPrompt = buildEffectiveSystemPrompt(systemPrompt, context.summary, skills)
+  const effectiveSystemPrompt = buildEffectiveSystemPrompt(systemPrompt, context.summary, skills, memorySummary, activeMemory)
   if (context.summary) {
     emit(res, { type: 'context_summary', messageCount: context.totalMessages, keptMessages: context.messages.length })
     session.recordRunEvent(runId, 'context_summary', {
