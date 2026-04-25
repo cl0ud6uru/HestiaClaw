@@ -1,0 +1,454 @@
+@keyframes graph-pulse {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 1; }
+}
+
+.graph-overlay {
+  position: fixed;
+  inset: 0;
+  background: #000000;
+  z-index: 200;
+}
+
+.graph-panel {
+  position: absolute;
+  inset: 0;
+  background: #000000;
+  border: 1px solid #00d4ff;
+  display: flex;
+  flex-direction: column;
+}
+
+.graph-panel .bubble-corner {
+  position: absolute;
+  width: 12px;
+  height: 12px;
+}
+
+.graph-panel .bubble-corner.tl { top: -1px; left: -1px; border-top: 2px solid #00d4ff; border-left: 2px solid #00d4ff; }
+.graph-panel .bubble-corner.tr { top: -1px; right: -1px; border-top: 2px solid #00d4ff; border-right: 2px solid #00d4ff; }
+.graph-panel .bubble-corner.bl { bottom: -1px; left: -1px; border-bottom: 2px solid #00d4ff; border-left: 2px solid #00d4ff; }
+.graph-panel .bubble-corner.br { bottom: -1px; right: -1px; border-bottom: 2px solid #00d4ff; border-right: 2px solid #00d4ff; }
+
+.graph-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px;
+  border-bottom: 1px solid #0a3a5c;
+  flex-shrink: 0;
+}
+
+.graph-title {
+  font-family: 'Orbitron', sans-serif;
+  color: #00d4ff;
+  font-size: 13px;
+  letter-spacing: 3px;
+  flex: 1;
+}
+
+.graph-count {
+  font-family: 'Orbitron', sans-serif;
+  color: #00ffaa;
+  font-size: 10px;
+  letter-spacing: 2px;
+  opacity: 0.8;
+}
+
+.graph-refresh,
+.graph-close {
+  background: none;
+  border: 1px solid #00d4ff;
+  color: #00d4ff;
+  padding: 4px 10px;
+  cursor: pointer;
+  font-family: 'Orbitron', sans-serif;
+  font-size: 13px;
+  line-height: 1;
+  transition: background 0.15s, color 0.15s;
+}
+
+.graph-refresh:hover,
+.graph-close:hover {
+  background: #00d4ff;
+  color: #000000;
+}
+
+.graph-recompute {
+  background: none;
+  border: 1px solid #00ffaa;
+  color: #00ffaa;
+  padding: 4px 10px;
+  cursor: pointer;
+  font-family: 'Orbitron', sans-serif;
+  font-size: 10px;
+  letter-spacing: 1px;
+  line-height: 1;
+  transition: background 0.15s, color 0.15s;
+}
+
+.graph-recompute:hover:not(:disabled) {
+  background: #00ffaa;
+  color: #000000;
+}
+
+.graph-recompute:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.graph-recompute-msg {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 10px;
+  letter-spacing: 1px;
+}
+
+.graph-recompute-ok  { color: #00ffaa; }
+.graph-recompute-err { color: #ff3366; }
+
+.graph-status {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+}
+
+.graph-loading {
+  font-family: 'Orbitron', sans-serif;
+  color: #00d4ff;
+  font-size: 12px;
+  letter-spacing: 2px;
+  animation: graph-pulse 1.4s ease-in-out infinite;
+}
+
+.graph-error {
+  font-family: 'Orbitron', sans-serif;
+  color: #ff3366;
+  font-size: 13px;
+  letter-spacing: 2px;
+}
+
+.graph-error-detail {
+  font-family: 'Rajdhani', sans-serif;
+  color: #8899aa;
+  font-size: 13px;
+  max-width: 480px;
+  text-align: center;
+}
+
+/* control bar */
+.graph-controls {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 16px;
+  border-bottom: 1px solid #0a3a5c;
+  flex-shrink: 0;
+}
+
+.graph-ctrl-btn {
+  background: none;
+  border: 1px solid #0a3a5c;
+  color: #445566;
+  padding: 3px 10px;
+  cursor: pointer;
+  font-family: 'Orbitron', sans-serif;
+  font-size: 9px;
+  letter-spacing: 1px;
+  line-height: 1;
+  transition: border-color 0.15s, color 0.15s;
+}
+
+.graph-ctrl-btn:hover {
+  border-color: #00d4ff;
+  color: #00d4ff;
+}
+
+.graph-ctrl-btn.active {
+  border-color: #00d4ff;
+  color: #00d4ff;
+}
+
+.graph-ctrl-btn--gold:hover {
+  border-color: #ffd700;
+  color: #ffd700;
+}
+
+.graph-ctrl-btn--gold.active {
+  border-color: #ffd700;
+  color: #ffd700;
+}
+
+.graph-ctrl-label {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 9px;
+  letter-spacing: 1px;
+  color: #445566;
+}
+
+.graph-ctrl-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 90px;
+  height: 2px;
+  background: linear-gradient(to right, #00d4ff var(--bloom-pct, 30%), #0a2a3a var(--bloom-pct, 30%));
+  outline: none;
+  cursor: pointer;
+  border: none;
+}
+
+.graph-ctrl-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #00d4ff;
+  cursor: pointer;
+  box-shadow: 0 0 4px #00d4ff;
+}
+
+.graph-ctrl-slider::-moz-range-thumb {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #00d4ff;
+  cursor: pointer;
+  border: none;
+  box-shadow: 0 0 4px #00d4ff;
+}
+
+/* canvas + info panel wrapper */
+.graph-body {
+  flex: 1;
+  position: relative;
+  min-height: 0;
+}
+
+.graph-canvas {
+  width: 100%;
+  height: 100%;
+  position: relative;
+  overflow: hidden;
+}
+
+.graph-canvas > canvas {
+  display: block;
+}
+
+/* layers panel — left side */
+.graph-layers-panel {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  width: 190px;
+  max-height: calc(100% - 24px);
+  background: rgba(3, 8, 16, 0.88);
+  border: 1px solid #00d4ff;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  z-index: 10;
+  pointer-events: auto;
+}
+
+.graph-layers-title {
+  font-family: 'Orbitron', sans-serif;
+  color: #00d4ff;
+  font-size: 9px;
+  letter-spacing: 3px;
+  padding: 8px 12px 6px;
+  border-bottom: 1px solid #0a3a5c;
+  flex-shrink: 0;
+}
+
+.graph-layers-list {
+  overflow-y: auto;
+  flex: 1;
+  padding: 4px 0;
+}
+
+.graph-layer-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 5px 12px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  transition: background 0.12s;
+  text-align: left;
+}
+
+.graph-layer-row:hover {
+  background: rgba(0, 212, 255, 0.08);
+}
+
+.graph-layer-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  box-shadow: 0 0 4px currentColor;
+}
+
+.graph-layer-label {
+  font-family: 'Orbitron', sans-serif;
+  color: #7799aa;
+  font-size: 8px;
+  letter-spacing: 1px;
+  flex: 1;
+}
+
+.graph-layer-row:hover .graph-layer-label {
+  color: #00d4ff;
+}
+
+.graph-layer-count {
+  font-family: 'Rajdhani', sans-serif;
+  color: #445566;
+  font-size: 12px;
+  min-width: 20px;
+  text-align: right;
+}
+
+.graph-layers-stats {
+  border-top: 1px solid #0a3a5c;
+  padding: 6px 12px 8px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.graph-stat-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+
+.graph-stat-key {
+  font-family: 'Orbitron', sans-serif;
+  color: #334455;
+  font-size: 7px;
+  letter-spacing: 2px;
+}
+
+.graph-stat-val {
+  font-family: 'Rajdhani', sans-serif;
+  color: #00ffaa;
+  font-size: 13px;
+}
+
+/* node info panel */
+.graph-info-panel {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 300px;
+  max-height: calc(100% - 24px);
+  background: rgba(3, 8, 16, 0.94);
+  border: 1px solid #00d4ff;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  z-index: 10;
+}
+
+.graph-info-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 12px;
+  border-bottom: 1px solid #0a3a5c;
+  flex-shrink: 0;
+}
+
+.graph-info-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.graph-info-name {
+  font-family: 'Orbitron', sans-serif;
+  color: #00d4ff;
+  font-size: 12px;
+  letter-spacing: 1px;
+  flex: 1;
+  word-break: break-word;
+  line-height: 1.4;
+}
+
+.graph-info-dismiss {
+  background: none;
+  border: none;
+  color: #334455;
+  cursor: pointer;
+  font-size: 13px;
+  padding: 0;
+  line-height: 1;
+  flex-shrink: 0;
+  transition: color 0.15s;
+}
+
+.graph-info-dismiss:hover {
+  color: #00d4ff;
+}
+
+.graph-info-meta {
+  padding: 7px 12px;
+  font-family: 'Rajdhani', sans-serif;
+  color: #00ffaa;
+  font-size: 13px;
+  letter-spacing: 1px;
+  border-bottom: 1px solid #0a3a5c;
+  flex-shrink: 0;
+}
+
+.graph-info-relations {
+  overflow-y: auto;
+  flex: 1;
+}
+
+.graph-info-empty {
+  padding: 12px;
+  font-family: 'Rajdhani', sans-serif;
+  color: #445566;
+  font-size: 12px;
+  text-align: center;
+}
+
+.graph-info-relation {
+  padding: 6px 12px;
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 14px;
+  color: #8899aa;
+  border-bottom: 1px solid rgba(10, 58, 92, 0.5);
+  line-height: 1.4;
+}
+
+.graph-info-relation:last-child {
+  border-bottom: none;
+}
+
+.graph-info-arrow {
+  color: #334d66;
+  font-size: 11px;
+}
+
+.graph-info-target {
+  color: #00d4ff;
+}
+
+.graph-info-fact {
+  display: block;
+  color: #556677;
+  font-size: 12px;
+  margin-top: 2px;
+  line-height: 1.3;
+}

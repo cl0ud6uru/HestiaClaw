@@ -1,0 +1,121 @@
+.account-panel {
+  position: absolute;
+  top: calc(100% - 4px);
+  right: 20px;
+  width: min(360px, calc(100vw - 32px));
+  padding: 16px;
+  background: rgba(0, 10, 32, 0.97);
+  border: 1px solid rgba(0, 180, 255, 0.22);
+  box-shadow: 0 14px 40px rgba(0, 0, 0, 0.35);
+  z-index: 30;
+}
+
+.account-panel__header {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.account-panel__label {
+  color: rgba(0, 200, 255, 0.58);
+  font-family: 'Orbitron', sans-serif;
+  font-size: 0.6rem;
+  letter-spacing: 0.18em;
+}
+
+.account-panel__user {
+  color: #e4f8ff;
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 1.15rem;
+}
+
+.account-panel__close {
+  border: none;
+  background: transparent;
+  color: rgba(0, 212, 255, 0.7);
+  font-size: 1.4rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.account-panel__form {
+  margin-top: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.account-panel__voice {
+  margin-top: 14px;
+  padding: 12px;
+  border: 1px solid rgba(0, 180, 255, 0.16);
+  background: rgba(0, 18, 48, 0.5);
+}
+
+.account-panel__voice-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: baseline;
+  margin-bottom: 10px;
+}
+
+.account-panel__voice-note {
+  color: rgba(0, 200, 255, 0.48);
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 0.9rem;
+}
+
+.account-panel__field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.account-panel__field span {
+  color: rgba(0, 200, 255, 0.62);
+  font-family: 'Orbitron', sans-serif;
+  font-size: 0.58rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.account-panel__field input,
+.account-panel__field select {
+  border: 1px solid rgba(0, 180, 255, 0.2);
+  background: rgba(0, 18, 48, 0.95);
+  color: #c8e8ff;
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 0.98rem;
+  padding: 9px 10px;
+  outline: none;
+}
+
+.account-panel__message {
+  font-size: 0.92rem;
+}
+
+.account-panel__message--error {
+  color: #ff9b8b;
+}
+
+.account-panel__message--success {
+  color: #8affd2;
+}
+
+.account-panel__submit {
+  border: 1px solid rgba(0, 212, 255, 0.5);
+  background: rgba(0, 86, 172, 0.42);
+  color: #d7f1ff;
+  font-family: 'Orbitron', sans-serif;
+  font-size: 0.66rem;
+  letter-spacing: 0.14em;
+  padding: 11px 12px;
+  cursor: pointer;
+}
+
+.account-panel__submit:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}

@@ -1,0 +1,30 @@
+.chat-bg {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0;
+  transition: opacity 2s ease;
+}
+
+.chat-bg--visible {
+  opacity: 0.18;
+}
+
+@keyframes chat-bg-pulse {
+  0%   { opacity: 0.55; }
+  100% { opacity: 0.18; }
+}
+
+.chat-bg--pulse {
+  animation: chat-bg-pulse 2.5s ease-out forwards;
+}
+
+.chat-bg-canvas {
+  width: 100%;
+  height: 100%;
+}
+
+.chat-bg-canvas > canvas {
+  display: block;
+}

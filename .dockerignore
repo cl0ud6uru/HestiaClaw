@@ -1,0 +1,11 @@
+node_modules
+dist
+data
+.env
+agent.config.json
+*.local
+.git
+.codex
+graph screens
+graph view concepts
+notes

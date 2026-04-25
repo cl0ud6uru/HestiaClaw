@@ -1,0 +1,29 @@
+.header-orb {
+  position: absolute;
+  right: 20px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 100px;
+  height: 100px;
+  border-radius: 50%;
+  overflow: hidden;
+  border: 1px solid rgba(0, 212, 255, 0.35);
+  box-shadow: 0 0 12px rgba(0, 212, 255, 0.15);
+  transition: box-shadow 0.3s ease, border-color 0.3s ease;
+}
+
+.header-orb canvas {
+  display: block;
+  width: 100px;
+  height: 100px;
+}
+
+@keyframes orb-pulse {
+  0%   { box-shadow: 0 0 0 0 rgba(0, 212, 255, 0.9), 0 0 8px rgba(0, 212, 255, 0.15); border-color: rgba(0, 212, 255, 0.35); }
+  30%  { box-shadow: 0 0 0 8px rgba(0, 212, 255, 0), 0 0 20px rgba(0, 212, 255, 0.6); border-color: rgba(0, 212, 255, 0.9); }
+  100% { box-shadow: 0 0 0 0 rgba(0, 212, 255, 0), 0 0 8px rgba(0, 212, 255, 0.15); border-color: rgba(0, 212, 255, 0.35); }
+}
+
+.header-orb--pulse {
+  animation: orb-pulse 1.5s ease-out forwards;
+}

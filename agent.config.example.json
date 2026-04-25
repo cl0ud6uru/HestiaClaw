@@ -1,0 +1,26 @@
+{
+  "provider": {
+    "type": "anthropic",
+    "model": "claude-opus-4-7"
+  },
+  "systemPrompt": "You are Hestia, a home intelligence assistant. You help manage smart home devices, automations, and routines through Home Assistant. You are calm, precise, and helpful. Be concise but thorough.",
+  "harness": {
+    "approvals": true,
+    "approvalTimeoutMs": 60000,
+    "compactionEnabled": true,
+    "contextMaxMessages": 40
+  },
+  "mcpServers": {
+    "graphiti": {
+      "url": "http://localhost:8001/mcp"
+    },
+    "home-assistant": {
+      "command": "uvx",
+      "args": ["hass-mcp"],
+      "env": {
+        "HA_URL": "${HA_URL}",
+        "HA_TOKEN": "${HA_TOKEN}"
+      }
+    }
+  }
+}
