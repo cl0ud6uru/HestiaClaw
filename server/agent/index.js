@@ -13,7 +13,7 @@ export function createAgentRouter({ provider, session, registry, systemPrompt, m
   const runtimeSettings = {
     approvalsEnabled: Boolean(approvals),
     systemPrompt,
-    model: null,                                       // null = use provider default
+    model: settings.model || null,
     reasoningEffort: settings.reasoningEffort || null,
     thinkingBudget: settings.thinkingBudget || null,
     contextMaxMessages: settings.contextMaxMessages || 40,
@@ -34,6 +34,24 @@ export function createAgentRouter({ provider, session, registry, systemPrompt, m
     res.flushHeaders()
 
     const skills = await getSkills()
+
+    // Built-in /approvals toggle command
+    if (/^\/approvals(\s|$)/i.test(message)) {
+      if (!approvals) {
+        res.write(JSON.stringify({ type: 'token', content: 'Approvals are disabled in agent.config.json and cannot be toggled at runtime.' }) + '\n')
+      } else {
+        const arg = (message.split(/\s+/)[1] || '').toLowerCase()
+        if (arg === 'on') runtimeSettings.approvalsEnabled = true
+        else if (arg === 'off') runtimeSettings.approvalsEnabled = false
+        else runtimeSettings.approvalsEnabled = !runtimeSettings.approvalsEnabled
+        const state = runtimeSettings.approvalsEnabled ? 'enabled' : 'disabled'
+        res.write(JSON.stringify({ type: 'token', content: `Tool approvals ${state}.` }) + '\n')
+        res.write(JSON.stringify({ type: 'config_changed' }) + '\n')
+      }
+      res.write(JSON.stringify({ type: 'done' }) + '\n')
+      res.end()
+      return
+    }
 
     // Detect /skill-name invocation
     let userMessage = message
@@ -133,6 +151,42 @@ export function createAgentRouter({ provider, session, registry, systemPrompt, m
     res.json({ tools: registry.listTools() })
   })
 
+  router.get('/conversations', (req, res) => {
+    res.json({ conversations: session.listConversations(Number(req.query.limit) || 50) })
+  })
+
+  router.get('/conversations/:id/messages', (req, res) => {
+    const conversationId = String(req.params.id || '').trim()
+    if (!conversationId) return res.status(400).json({ error: 'conversation_id is required.' })
+
+    const history = session.getHistory(conversationId)
+    const runs = session.getRunsWithToolCalls(conversationId)
+
+    // Match runs to assistant messages by position: run[n] corresponds to the (n+1)th user→assistant exchange
+    let runIdx = -1
+    const messages = history
+      .filter(m => m.role === 'user' || m.role === 'assistant')
+      .map((m, i) => {
+        if (m.role === 'user') runIdx++
+        let content = ''
+        if (typeof m.content === 'string') {
+          content = m.content
+        } else if (Array.isArray(m.content)) {
+          content = m.content.map(p => p.text || p.content || '').filter(Boolean).join('')
+        }
+        const msg = { id: i + 1, role: m.role, content, streaming: false }
+        if (m.role === 'assistant' && runs[runIdx]?.toolCalls?.length) {
+          msg.toolCalls = runs[runIdx].toolCalls.map(tc => ({
+            name: tc.name.replace(/__/g, ': '),
+            type: 'subagent',
+          }))
+        }
+        return msg
+      })
+      .filter(m => m.content)
+    res.json({ messages })
+  })
+
   router.get('/runs', (req, res) => {
     res.json({ runs: session.getRecentRuns(Number(req.query.limit) || 20) })
   })
@@ -175,28 +229,37 @@ export function createAgentRouter({ provider, session, registry, systemPrompt, m
     }
   })
 
-  async function persistProviderModel(type, model) {
+  async function persistSettings() {
     if (!configPath) return
     try {
       const raw = await readFile(configPath, 'utf8')
       const cfg = JSON.parse(raw)
-      cfg.provider = { ...cfg.provider, type, model }
+      cfg.provider = {
+        ...cfg.provider,
+        type: currentProvider.name,
+        model: runtimeSettings.model || currentProvider.model,
+      }
+      cfg.systemPrompt = runtimeSettings.systemPrompt
+      cfg.harness = {
+        ...cfg.harness,
+        compactionEnabled: runtimeSettings.compactionEnabled,
+        contextMaxMessages: runtimeSettings.contextMaxMessages,
+        ...(runtimeSettings.reasoningEffort != null ? { reasoningEffort: runtimeSettings.reasoningEffort } : {}),
+        ...(runtimeSettings.thinkingBudget != null ? { thinkingBudget: runtimeSettings.thinkingBudget } : {}),
+      }
       await writeFile(configPath, JSON.stringify(cfg, null, 2) + '\n', 'utf8')
     } catch (err) {
-      console.warn('[agent] Could not persist provider/model to config:', err.message)
+      console.warn('[agent] Could not persist settings to config:', err.message)
     }
   }
 
   router.post('/settings', async (req, res) => {
     const body = req.body || {}
-    let providerChanged = false
-    let modelChanged = false
 
     if (typeof body.provider === 'string' && ['anthropic', 'openai'].includes(body.provider)) {
       if (body.provider !== currentProvider.name) {
         currentProvider = createProvider({ type: body.provider, model: runtimeSettings.model || undefined })
         runtimeSettings.model = null
-        providerChanged = true
       }
     }
 
@@ -208,8 +271,7 @@ export function createAgentRouter({ provider, session, registry, systemPrompt, m
       runtimeSettings.systemPrompt = body.systemPrompt
     }
     if (typeof body.model === 'string') {
-      const newModel = body.model || null
-      if (newModel !== runtimeSettings.model) { runtimeSettings.model = newModel; modelChanged = true }
+      runtimeSettings.model = body.model || null
     }
     if (body.reasoningEffort !== undefined) {
       runtimeSettings.reasoningEffort = body.reasoningEffort || null
@@ -224,9 +286,7 @@ export function createAgentRouter({ provider, session, registry, systemPrompt, m
       runtimeSettings.compactionEnabled = body.compactionEnabled
     }
 
-    if (providerChanged || modelChanged) {
-      persistProviderModel(currentProvider.name, runtimeSettings.model || currentProvider.model)
-    }
+    persistSettings()
 
     return res.json({ ok: true, settings: { ...runtimeSettings } })
   })

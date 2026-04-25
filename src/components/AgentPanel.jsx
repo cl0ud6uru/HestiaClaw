@@ -16,7 +16,7 @@ const EMPTY_DRAFT = {
   compactionEnabled: true,
 }
 
-export default function AgentPanel({ activeConversationTitle, onClose, onForkConversation }) {
+export default function AgentPanel({ activeConversationTitle, onClose, onForkConversation, configVersion = 0 }) {
   const [data, setData] = useState(null)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(true)
@@ -88,7 +88,7 @@ export default function AgentPanel({ activeConversationTitle, onClose, onForkCon
 
   useEffect(() => {
     void Promise.resolve().then(loadConfig)
-  }, [])
+  }, [configVersion]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const toggleApprovals = async () => {
     if (!data?.features?.approvalsConfigured || togglingApprovals) return

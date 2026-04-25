@@ -9,18 +9,19 @@ Under the hood: a React + Vite frontend, an Express agent harness, real-time tok
 ## Features
 
 - **Native agent harness** — built-in agent loop with multi-provider LLM support: Anthropic Claude, OpenAI / GPT, or any OpenAI-compatible endpoint (Ollama, LM Studio, etc.)
-- **Home Assistant integration** — 84+ HA tools via ha-mcp; control devices, query entities, trigger automations, and check states directly from chat
+- **Home Assistant integration** — 87+ HA tools via ha-mcp; control devices, query entities, trigger automations, and check states directly from chat
+- **HA Assist voice integration** — connect Home Assistant's Assist voice pipeline directly to Hestia via the [webhook-conversation](https://github.com/eulemitkeule/webhook-conversation) integration; voice sessions appear in the sidebar alongside regular chats
 - **Layered memory system** — pinned facts file (`MEMORY.md`) + per-turn Graphiti recall + long-term knowledge graph; memories are promoted, consolidated, and pruned automatically each night
 - **MCP tool support** — connect any MCP server in `agent.config.json`; tools are auto-registered and immediately available to the LLM
 - **Skills system** — drop `SKILL.md` files into `skills/` to define custom agent behaviors; invoke with `/skill-name` or let the model pick them up automatically
 - **3D knowledge graph** — full-screen force-directed visualization of the Graphiti/Neo4j memory graph, with community coloring, degree sizing, and one-click GDS recompute
-- **Runtime provider & model switching** — swap between Anthropic and OpenAI and pick any model from a live-fetched dropdown without restarting the server
+- **Runtime provider & model switching** — swap between Anthropic and OpenAI and pick any model from a live-fetched dropdown without restarting the server; settings persist across restarts
 - **Agent diagnostics panel** — inspect provider, MCP server health, tool metadata, skills, and fully traced recent runs
-- **Harness controls** — browser-mediated approvals for risky tools, bounded context compaction, session forking
+- **Harness controls** — browser-mediated approvals for risky tools, bounded context compaction, session forking; toggle approvals with `/approvals` in chat
 - **Real-time streaming** — responses appear token-by-token; tool call badges show which tools fired and when
 - **Voice I/O** — hold to speak (ElevenLabs realtime STT), spoken replies after mic-originated turns (ElevenLabs TTS)
 - **Thinking animation** — rotating rings, hex grid, pulsing core while the agent is thinking; shows active tool name live
-- **Multi-conversation sidebar** — persistent conversation history, create / switch / delete / search sessions
+- **Multi-conversation sidebar** — persistent conversation history sorted by recency, create / switch / delete / search sessions
 - **Markdown + syntax highlighting** — GFM rendering, auto-fenced code blocks, Prism highlighting with copy button
 
 ---
@@ -72,6 +73,7 @@ cp .env.example .env
 | `ELEVENLABS_DEFAULT_VOICE_ID` | Voice | Default TTS voice ID |
 | `ELEVENLABS_TTS_MODEL_ID` | — | TTS model, default `eleven_flash_v2_5` |
 | `ELEVENLABS_STT_MODEL_ID` | — | STT model, default `scribe_v2_realtime` |
+| `WEBHOOK_SECRET` | — | If set, required as the Basic Auth **password** for `POST /api/webhook/conversation`; username can be anything |
 | `NEO4J_URI` | — | Bolt URI override (auto-set inside Docker) |
 | `NEO4J_USER` | — | Neo4j username, default `neo4j` |
 | `N8N_WEBHOOK_URL` | N8N mode | N8N streaming webhook URL |
@@ -92,7 +94,7 @@ cp agent.config.example.json agent.config.json
 {
   "provider": {
     "type": "openai",
-    "model": "gpt-4.1-mini"
+    "model": "gpt-5.4-mini"
   },
   "systemPrompt": "You are Hestia, a smart home AI assistant...",
   "harness": {
@@ -117,9 +119,47 @@ cp agent.config.example.json agent.config.json
 | `type` | Model examples | Notes |
 |---|---|---|
 | `anthropic` | `claude-opus-4-7`, `claude-sonnet-4-6` | Requires `ANTHROPIC_API_KEY` |
-| `openai` | `gpt-4.1`, `gpt-4.1-mini` | Requires `OPENAI_API_KEY`; set `OPENAI_BASE_URL` for local models |
+| `openai` | `gpt-5.4`, `gpt-5.4-mini`, `gpt-5.4-nano` | Requires `OPENAI_API_KEY`; set `OPENAI_BASE_URL` for local models |
 
 **MCP servers** support both stdio configs (`command`/`args`) and remote HTTP configs (`url`). `${VAR}` references in `env` and `headers` blocks expand from the environment at startup.
+
+All settings changed through the Agent Harness panel (provider, model, system prompt, context window, etc.) are written back to `agent.config.json` automatically and persist across container restarts.
+
+---
+
+## Home Assistant Assist Integration
+
+Hestia can serve as the AI backend for Home Assistant's Assist voice pipeline via the [webhook-conversation](https://github.com/eulemitkeule/webhook-conversation) custom integration. Voice commands spoken to an HA voice satellite (e.g. a Voice PE device) are routed through Hestia's full agent harness — including MCP tools, long-term memory, and entity awareness.
+
+### Setup
+
+1. Install the **Webhook Conversation** integration in Home Assistant (HACS → Custom repositories → `eulemitkeule/webhook-conversation`)
+
+2. Add a new **Conversation agent** in the integration and configure it:
+
+   | Field | Value |
+   |---|---|
+   | **Webhook URL** | `https://your-hestia-domain/api/webhook/conversation` |
+   | **Authentication** | Basic HTTP authentication |
+   | **Username** | anything (e.g. `hestia`) — not validated |
+   | **Password** | value of `WEBHOOK_SECRET` in your `.env` |
+   | **Output field name** | `output` |
+
+3. Generate a secure webhook secret:
+   ```bash
+   openssl rand -base64 32
+   ```
+   Set it as `WEBHOOK_SECRET` in `.env` and restart the container.
+
+4. In Home Assistant → **Settings → Voice assistants**, select your new Hestia conversation agent.
+
+### How it works
+
+- Each HA voice conversation uses its own `conversation_id`, which maps to a dedicated thread in the HestiaClaw sidebar — browse past voice sessions just like regular chat sessions
+- HA's list of exposed entities (with entity IDs, names, states, and areas) is injected into the agent's context each turn — Hestia knows your devices immediately without extra MCP lookups
+- Hestia's own system prompt and memory system are used; HA's generic system prompt is ignored
+- Write-tool approvals are bypassed for webhook calls (no browser is available during a voice interaction)
+- The sidebar polls for new voice sessions every 30 seconds and sorts them to the top as they receive new messages
 
 ---
 
@@ -134,6 +174,12 @@ Hestia uses a three-layer memory architecture so she actually remembers things:
 3. **Graphiti knowledge graph** — all conversations write episodes to Graphiti. Entities and relationships accumulate over time and are visible in the 3D graph view. The nightly consolidation job prunes duplicates and promotes the best facts to the pinned layer.
 
 To trigger consolidation manually: `POST /api/agent/consolidate`
+
+The pinned memory file lives at `data/MEMORY.md` inside the `hestia_data` Docker volume. To inspect or edit it directly:
+
+```bash
+docker exec hestiaclaw-hestia-1 cat /app/data/MEMORY.md
+```
 
 ---
 
@@ -170,6 +216,13 @@ when this skill is active.
 - Type `/morning-brief` and send to invoke directly
 - Skills with `disable-model-invocation: false` are injected into the system prompt so the model can invoke them automatically when the context matches
 
+**Built-in slash commands:**
+
+| Command | Description |
+|---|---|
+| `/new-chat` | Start a new conversation |
+| `/approvals` | Toggle tool approval prompts on/off. Also accepts `/approvals on` or `/approvals off`. State is reflected immediately in the Agent Harness panel. |
+
 ---
 
 ## Knowledge Graph
@@ -188,7 +241,7 @@ As Hestia converses and queries Home Assistant, Graphiti extracts entities and b
 
 ### API routes
 
-All routes require authentication except `/api/auth/login`.
+All routes require authentication except `/api/auth/login` and `/api/webhook/conversation`.
 
 | Method | Route | Description |
 |---|---|---|
@@ -204,8 +257,11 @@ All routes require authentication except `/api/auth/login`.
 | `GET` | `/api/agent/runs` | Recent traced agent runs |
 | `GET` | `/api/agent/approvals` | Pending tool approval requests |
 | `POST` | `/api/agent/approvals/:id` | Approve or deny a pending tool call |
+| `GET` | `/api/agent/conversations` | List all server-side conversations with metadata |
+| `GET` | `/api/agent/conversations/:id/messages` | Message history for a conversation (with tool badges) |
 | `POST` | `/api/agent/conversations/fork` | Copy agent history into a new conversation |
 | `POST` | `/api/agent/consolidate` | Trigger memory consolidation manually |
+| `POST` | `/api/webhook/conversation` | HA Assist webhook endpoint (no session auth — see WEBHOOK_SECRET) |
 | `GET` | `/api/graph` | Query Neo4j knowledge graph (nodes + edges) |
 | `POST` | `/api/graph/recompute` | Re-run GDS Louvain + degree analytics |
 | `GET` | `/api/voice/voices` | List ElevenLabs voices |
@@ -245,7 +301,8 @@ A legacy N8N streaming webhook integration is still available as a selectable ba
 Hestia stands on the shoulders of some excellent open-source projects:
 
 - **[Graphiti](https://github.com/getzep/graphiti)** by [Zep AI](https://www.getzep.com/) — the temporal knowledge graph engine that powers Hestia's long-term memory
-- **[ha-mcp](https://github.com/homeassistant-ai/ha-mcp)** by homeassistant-ai — the MCP server that gives Hestia her 84+ Home Assistant tools
+- **[ha-mcp](https://github.com/homeassistant-ai/ha-mcp)** by homeassistant-ai — the MCP server that gives Hestia her Home Assistant tools
+- **[webhook-conversation](https://github.com/eulemitkeule/webhook-conversation)** by eulemitkeule — the HA custom integration that bridges Assist voice pipeline to external AI backends
 - **[Home Assistant](https://www.home-assistant.io/)** — the open-source smart home platform this whole thing is built around
 - **[Neo4j](https://neo4j.com/)** — the graph database backing the knowledge graph visualization
 - **[3d-force-graph](https://github.com/vasturiano/3d-force-graph)** + **[three.js](https://threejs.org/)** — the 3D graph rendering stack

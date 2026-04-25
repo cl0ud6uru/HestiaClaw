@@ -3,6 +3,7 @@ import './ChatInput.css'
 
 const BUILTIN_COMMANDS = [
   { name: 'new-chat', description: 'Start a new conversation', builtin: true },
+  { name: 'approvals', description: 'Toggle tool approvals on/off (or /approvals on|off)' },
 ]
 
 export default function ChatInput({
