@@ -69,6 +69,7 @@ export default function App() {
   const [agentPanelOpen, setAgentPanelOpen] = useState(false)
   const [showGraph, setShowGraph] = useState(false)
   const [memoryPulseAt, setMemoryPulseAt] = useState(null)
+  const [agentConfigVersion, setAgentConfigVersion] = useState(0)
   const [skills, setSkills] = useState([])
   const [settingsBusy, setSettingsBusy] = useState(false)
   const [settingsError, setSettingsError] = useState('')
@@ -85,9 +86,46 @@ export default function App() {
   const transcriberRef = useRef(null)
   const speechPlaybackRef = useRef(null)
   const speechUrlRef = useRef('')
+  const fetchedVoiceConvsRef = useRef(new Set())
 
   const activeConv = conversations.find(c => c.id === activeId) ?? conversations[0] ?? null
   const messages = activeConv?.messages ?? []
+
+  function syncServerConversations() {
+    fetch('/api/agent/conversations')
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        if (!data?.conversations?.length) return
+        setConversations(prev => {
+          const serverById = new Map(data.conversations.map(c => [c.id, c]))
+          // Update updatedAt for existing conversations that got new HA messages
+          let changed = false
+          const updated = prev.map(c => {
+            const srv = serverById.get(c.id)
+            if (srv && srv.updatedAt > (c.updatedAt || 0)) {
+              changed = true
+              return { ...c, updatedAt: srv.updatedAt }
+            }
+            return c
+          })
+          // Add brand-new server-side conversations not yet in localStorage
+          const existingIds = new Set(prev.map(c => c.id))
+          const incoming = data.conversations
+            .filter(c => !existingIds.has(c.id))
+            .map(c => ({
+              id: c.id,
+              title: c.firstMessage ? c.firstMessage.slice(0, 60) : 'Voice session',
+              messages: [{ id: 0, role: 'assistant', content: GREETING, streaming: false }],
+              createdAt: c.createdAt,
+              updatedAt: c.updatedAt,
+              source: 'voice',
+            }))
+          if (!changed && !incoming.length) return prev
+          return [...updated, ...incoming].sort((a, b) => b.updatedAt - a.updatedAt)
+        })
+      })
+      .catch(() => {})
+  }
 
   useEffect(() => {
     const hydrateSession = async () => {
@@ -138,7 +176,16 @@ export default function App() {
     setConversations(loaded)
     setActiveId(loaded[0]?.id ?? null)
     setStorageReady(true)
+
+    syncServerConversations()
   }, [authUser])
+
+  // Poll server conversations every 30s to pick up new HA voice sessions and update sort order
+  useEffect(() => {
+    if (!authUser) return
+    const interval = setInterval(syncServerConversations, 30000)
+    return () => clearInterval(interval)
+  }, [authUser]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (!authUser) return
@@ -207,6 +254,22 @@ export default function App() {
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [activeConv?.updatedAt, isThinking])
+
+  // Load server-side message history for voice/webhook conversations on first select
+  useEffect(() => {
+    if (!activeConv || activeConv.source !== 'voice') return
+    if (fetchedVoiceConvsRef.current.has(activeConv.id)) return
+    fetchedVoiceConvsRef.current.add(activeConv.id)
+    fetch(`/api/agent/conversations/${activeConv.id}/messages`)
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        if (!data?.messages?.length) return
+        setConversations(prev => prev.map(c =>
+          c.id === activeConv.id ? { ...c, messages: data.messages } : c
+        ))
+      })
+      .catch(() => {})
+  }, [activeId]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => () => {
     transcriberRef.current?.cancel()
@@ -651,6 +714,8 @@ export default function App() {
               approved,
               approved ? '' : 'Denied by user.',
             )
+          } else if (event.type === 'config_changed') {
+            setAgentConfigVersion(v => v + 1)
           } else if (event.type === 'tool_end') {
             setActiveToolName(null)
           } else if (event.type === 'done') {
@@ -994,6 +1059,7 @@ export default function App() {
               activeConversationTitle={activeConv?.title || ''}
               onClose={() => setAgentPanelOpen(false)}
               onForkConversation={forkActiveAgentConversation}
+              configVersion={agentConfigVersion}
             />
           )}
         </header>

@@ -13,9 +13,10 @@ function relativeDate(ts) {
 
 export default function Sidebar({ conversations, activeId, onNew, onSelect, onDelete, isOpen, onToggle, agentMode, onAgentModeChange }) {
   const [search, setSearch] = useState('')
+  const sorted = [...conversations].sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0))
   const filtered = search.trim()
-    ? conversations.filter(c => c.title.toLowerCase().includes(search.toLowerCase()))
-    : conversations
+    ? sorted.filter(c => c.title.toLowerCase().includes(search.toLowerCase()))
+    : sorted
 
   return (
     <aside className={`sidebar ${isOpen ? '' : 'sidebar--collapsed'}`}>

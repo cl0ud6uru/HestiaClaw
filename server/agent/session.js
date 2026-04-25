@@ -94,6 +94,24 @@ export class AgentSession {
     this._updateToolCall = db.prepare(
       'UPDATE agent_tool_calls SET result = ?, error = ?, completed_at = ? WHERE run_id = ? AND tool_call_id = ?',
     )
+    this._getRunsWithTools = db.prepare(`
+      SELECT r.id, r.started_at, t.name AS tool_name
+      FROM agent_runs r
+      LEFT JOIN agent_tool_calls t ON t.run_id = r.id
+      WHERE r.conversation_id = ?
+      ORDER BY r.started_at ASC, t.id ASC
+    `)
+    this._listConversations = db.prepare(`
+      SELECT
+        r.conversation_id AS id,
+        MIN(r.started_at) AS createdAt,
+        MAX(r.started_at) AS updatedAt,
+        (SELECT user_message FROM agent_runs WHERE conversation_id = r.conversation_id ORDER BY started_at ASC LIMIT 1) AS firstMessage
+      FROM agent_runs r
+      GROUP BY r.conversation_id
+      ORDER BY MAX(r.started_at) DESC
+      LIMIT ?
+    `)
     this._getRecentRuns = db.prepare(`
       SELECT
         r.id,
@@ -230,6 +248,20 @@ export class AgentSession {
 
   getRecentRuns(limit = 10) {
     return this._getRecentRuns.all(Math.max(1, Math.min(Number(limit) || 10, 50)))
+  }
+
+  getRunsWithToolCalls(conversationId) {
+    const rows = this._getRunsWithTools.all(conversationId)
+    const runMap = new Map()
+    for (const row of rows) {
+      if (!runMap.has(row.id)) runMap.set(row.id, { id: row.id, toolCalls: [] })
+      if (row.tool_name) runMap.get(row.id).toolCalls.push({ name: row.tool_name })
+    }
+    return Array.from(runMap.values())
+  }
+
+  listConversations(limit = 50) {
+    return this._listConversations.all(Math.max(1, Math.min(Number(limit) || 50, 200)))
   }
 
   forkConversation(sourceConversationId, targetConversationId) {

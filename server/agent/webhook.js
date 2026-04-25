@@ -53,15 +53,33 @@ export function createWebhookRouter({ provider, session, registry, systemPrompt,
       try { memorySummary = readFileSync(memoryPath, 'utf8') } catch { /* may not exist yet */ }
     }
 
+    // Parse exposed_entities from HA — gives agent immediate entity awareness
+    let entityContext = ''
+    if (req.body?.exposed_entities) {
+      try {
+        const raw = req.body.exposed_entities
+        const entities = typeof raw === 'string' ? JSON.parse(raw) : raw
+        if (Array.isArray(entities) && entities.length > 0) {
+          const lines = entities.map(e =>
+            `- ${e.entity_id} (${e.name})${e.area_name ? ` — area: ${e.area_name}` : ''} — state: ${e.state}`
+          )
+          entityContext = `Available Home Assistant entities:\n${lines.join('\n')}`
+        }
+      } catch { /* ignore malformed JSON */ }
+    }
+
     // Active memory recall (2s timeout)
-    let activeMemory = ''
+    let activeMemory = entityContext
     if (registry.has('graphiti__search_nodes')) {
       try {
         const recall = await Promise.race([
           registry.execute('graphiti__search_nodes', { query, group_ids: ['hestia_user', 'hestia_home'], max_results: 5 }),
           new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 2000)),
         ])
-        if (recall) activeMemory = String(recall).slice(0, 2000)
+        if (recall) {
+          const recallText = String(recall).slice(0, 2000)
+          activeMemory = entityContext ? `${entityContext}\n\n${recallText}` : recallText
+        }
       } catch { /* fail silently — Graphiti may be slow or down */ }
     }
 
@@ -72,7 +90,7 @@ export function createWebhookRouter({ provider, session, registry, systemPrompt,
       systemPrompt,
       conversationId,
       userMessage: query,
-      approvals: approvals ?? null,
+      approvals: null,
       events,
       skills: [],
       memorySummary,

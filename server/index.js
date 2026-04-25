@@ -667,6 +667,7 @@ if (agentConfig) {
       compactionEnabled: agentConfig.harness?.compactionEnabled !== false,
       reasoningEffort: agentConfig.harness?.reasoningEffort || null,
       thinkingBudget: agentConfig.harness?.thinkingBudget || null,
+      model: agentConfig.provider?.model || null,
     }
     const approvals = agentConfig.harness?.approvals === false
       ? null
