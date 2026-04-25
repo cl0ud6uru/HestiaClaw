@@ -13,6 +13,7 @@ import session from 'express-session'
 import helmet from 'helmet'
 import neo4j from 'neo4j-driver'
 import { createAgentRouter } from './agent/index.js'
+import { createWebhookRouter } from './agent/webhook.js'
 import { ApprovalManager } from './agent/approvals.js'
 import { AgentEventBus } from './agent/events.js'
 import { createProvider } from './agent/providers/index.js'
@@ -687,6 +688,19 @@ if (agentConfig) {
       onConsolidate: consolidate,
     })
     app.use('/api/agent', requireSameOrigin, requireAuth, agentRouter)
+
+    const webhookRouter = createWebhookRouter({
+      provider,
+      session: agentSession,
+      registry,
+      systemPrompt,
+      approvals,
+      events,
+      settings: harnessSettings,
+      memoryPath: MEMORY_PATH,
+    })
+    app.use('/api/webhook', webhookRouter)
+    console.log('[agent] Webhook endpoint active at POST /api/webhook/conversation')
     console.log(`[agent] Harness ready — ${registry.size} tool(s) registered`)
 
     // Daily memory consolidation at 3 AM
