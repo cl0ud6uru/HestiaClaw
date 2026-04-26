@@ -95,7 +95,7 @@ export default function ChatMessage({ message }) {
     <div className={`msg-row ${isUser ? 'msg-row--user' : 'msg-row--assistant'}`}>
       {!isUser && (
         <div className="msg-avatar">
-          <span>J</span>
+          <span>H</span>
         </div>
       )}
 

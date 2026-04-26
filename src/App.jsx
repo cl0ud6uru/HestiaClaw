@@ -1006,7 +1006,7 @@ export default function App() {
             <h1 className="app-title">HestiaClaw</h1>
           </div>
           <HeaderOrb pulseAt={memoryPulseAt} />
-          <p className="app-subtitle">JUST A RATHER VERY INTELLIGENT SYSTEM</p>
+          <p className="app-subtitle">HOME ENVIRONMENT SYSTEMS TECHNOLOGY INTELLIGENCE ASSISTANT</p>
           <div className="header-line" />
           <div className="header-actions">
             <button

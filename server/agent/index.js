@@ -45,6 +45,7 @@ export function createAgentRouter({ provider, session, registry, systemPrompt, m
         if (arg === 'on') runtimeSettings.approvalsEnabled = true
         else if (arg === 'off') runtimeSettings.approvalsEnabled = false
         else runtimeSettings.approvalsEnabled = !runtimeSettings.approvalsEnabled
+        persistSettings()
         const state = runtimeSettings.approvalsEnabled ? 'enabled' : 'disabled'
         res.write(JSON.stringify({ type: 'token', content: `Tool approvals ${state}.` }) + '\n')
         res.write(JSON.stringify({ type: 'config_changed' }) + '\n')

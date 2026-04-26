@@ -4,6 +4,8 @@
 
 Under the hood: a React + Vite frontend, an Express agent harness, real-time token streaming, a layered memory system (pinned facts + Graphiti long-term graph), MCP tool support, voice I/O, and a skills system for custom behaviors.
 
+> *Home Environment Systems Technology Intelligence Assistant*
+
 ---
 
 ## Features
@@ -23,6 +25,16 @@ Under the hood: a React + Vite frontend, an Express agent harness, real-time tok
 - **Thinking animation** — rotating rings, hex grid, pulsing core while the agent is thinking; shows active tool name live
 - **Multi-conversation sidebar** — persistent conversation history sorted by recency, create / switch / delete / search sessions
 - **Markdown + syntax highlighting** — GFM rendering, auto-fenced code blocks, Prism highlighting with copy button
+
+---
+
+## Screenshots
+
+### Chat Interface
+![Hestia chat interface](docs/images/chat-interface.png)
+
+### Knowledge Graph
+![Knowledge graph visualization](docs/images/knowledge-graph.png)
 
 ---
 

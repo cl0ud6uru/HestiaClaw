@@ -200,7 +200,7 @@ const UI_INIT = { status: 'loading', error: '', nodeCount: 0, selectedNode: null
 
 function uiReducer(state, action) {
   switch (action.type) {
-    case 'RESET':          return UI_INIT
+    case 'RESET':          return { ...UI_INIT, bloomStrength: state.bloomStrength }
     case 'READY':          return { ...state, status: 'ready', nodeCount: action.nodeCount }
     case 'ERROR':          return { ...state, status: 'error', error: action.error }
     case 'STABILIZED':     return { ...state, stabilized: true }
@@ -212,39 +212,51 @@ function uiReducer(state, action) {
 }
 
 export default function GraphView({ onClose }) {
+  const savedGraphSettings = (() => {
+    try { return JSON.parse(localStorage.getItem('hestia-graph-settings') ?? '{}') } catch { return {} }
+  })()
+
   const containerRef      = useRef(null)
   const graphRef          = useRef(null)
   const bloomRef          = useRef(null)
   const rawDataRef        = useRef({ nodes: [], edges: [] })
-  const showLabelsRef     = useRef(false)
+  const showLabelsRef     = useRef(savedGraphSettings.showLabels ?? false)
   const nodesRef          = useRef([])
   const nodeMaterialsRef  = useRef(new Map())
-  const isGoldRef         = useRef(false)
-  const isGlobeRef        = useRef(true)
-  const showClustersRef   = useRef(false)
+  const isGoldRef         = useRef(savedGraphSettings.isGold ?? false)
+  const isGlobeRef        = useRef(savedGraphSettings.isGlobe ?? true)
+  const showClustersRef   = useRef(savedGraphSettings.showClusters ?? false)
   const clusterSpritesRef = useRef([])
   const arcReactorRef      = useRef(null)
   const starFieldRef       = useRef(null)
   const communityNamesRef  = useRef(new Map())
-  const isAnimatingRef      = useRef(true)
+  const isAnimatingRef      = useRef(savedGraphSettings.isAnimating ?? true)
   const orbitPausedUntilRef = useRef(0)
-  const showStarsRef        = useRef(false)
+  const showStarsRef        = useRef(savedGraphSettings.showStars ?? false)
   const hasStabilizedRef    = useRef(false)
 
-  const [ui, dispatch]              = useReducer(uiReducer, UI_INIT)
+  const [ui, dispatch]              = useReducer(uiReducer, { ...UI_INIT, bloomStrength: savedGraphSettings.bloomStrength ?? BLOOM_DEFAULT })
   const [refreshKey, setRefreshKey] = useState(0)
   const [recomputing, setRecomputing]   = useState(false)
   const [recomputeMsg, setRecomputeMsg] = useState('')
-  const [showLabels, setShowLabels]   = useState(false)
-  const [is3D, setIs3D]               = useState(true)
-  const [isGlobe, setIsGlobe]         = useState(true)
-  const [isGold, setIsGold]           = useState(false)
-  const [showClusters, setShowClusters] = useState(false)
-  const [showReactor, setShowReactor]   = useState(true)
-  const [showStars, setShowStars]       = useState(false)
+  const [showLabels, setShowLabels]     = useState(savedGraphSettings.showLabels ?? false)
+  const [is3D, setIs3D]                 = useState(savedGraphSettings.is3D ?? true)
+  const [isGlobe, setIsGlobe]           = useState(savedGraphSettings.isGlobe ?? true)
+  const [isGold, setIsGold]             = useState(savedGraphSettings.isGold ?? false)
+  const [showClusters, setShowClusters] = useState(savedGraphSettings.showClusters ?? false)
+  const [showReactor, setShowReactor]   = useState(savedGraphSettings.showReactor ?? true)
+  const [showStars, setShowStars]       = useState(savedGraphSettings.showStars ?? false)
   const [communities, setCommunities]   = useState([])
   const [edgeCount, setEdgeCount]       = useState(0)
-  const [isAnimating, setIsAnimating]   = useState(true)
+  const [isAnimating, setIsAnimating]   = useState(savedGraphSettings.isAnimating ?? true)
+
+  // Persist graph display settings to localStorage
+  useEffect(() => {
+    localStorage.setItem('hestia-graph-settings', JSON.stringify({
+      showLabels, is3D, isGlobe, isGold, showClusters, showReactor, showStars, isAnimating,
+      bloomStrength: ui.bloomStrength,
+    }))
+  }, [showLabels, is3D, isGlobe, isGold, showClusters, showReactor, showStars, isAnimating, ui.bloomStrength])
 
   // Keep canvas sized to its container
   useEffect(() => {
