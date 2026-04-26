@@ -36,6 +36,8 @@ Under the hood: a React + Vite frontend, an Express agent harness, real-time tok
 ### Knowledge Graph
 ![Knowledge graph visualization](docs/images/knowledge-graph.png)
 
+![Knowledge graph 2D view](docs/images/knowledge-graph-2d.png)
+
 ---
 
 ## Quickstart
