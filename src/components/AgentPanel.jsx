@@ -69,6 +69,9 @@ export default function AgentPanel({ activeConversationTitle, onClose, onForkCon
   const [models, setModels] = useState([])
   const [modelsLoading, setModelsLoading] = useState(false)
   const [expandedSources, setExpandedSources] = useState(new Set())
+  const [soul, setSoul] = useState('')
+  const [savingSoul, setSavingSoul] = useState(false)
+  const [soulMsg, setSoulMsg] = useState('')
 
   const toolsBySource = useMemo(() => {
     const grouped = new Map()
@@ -129,8 +132,37 @@ export default function AgentPanel({ activeConversationTitle, onClose, onForkCon
     }
   }
 
+  const loadSoul = async () => {
+    try {
+      const res = await fetch('/api/agent/soul')
+      if (res.ok) {
+        const json = await res.json()
+        setSoul(json.soul || '')
+      }
+    } catch { /* non-fatal */ }
+  }
+
+  const saveSoul = async () => {
+    setSavingSoul(true)
+    setSoulMsg('')
+    try {
+      const res = await fetch('/api/agent/soul', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ soul }),
+      })
+      if (!res.ok) throw new Error('Save failed.')
+      setSoulMsg('Soul saved.')
+    } catch (err) {
+      setSoulMsg(err instanceof Error ? err.message : 'Save failed.')
+    } finally {
+      setSavingSoul(false)
+    }
+  }
+
   useEffect(() => {
     void Promise.resolve().then(loadConfig)
+    void Promise.resolve().then(loadSoul)
   }, [configVersion]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const toggleApprovals = async () => {
@@ -366,13 +398,30 @@ export default function AgentPanel({ activeConversationTitle, onClose, onForkCon
           </section>
 
           <section className="agent-panel__section">
-            <div className="agent-panel__section-title">System Prompt</div>
+            <div className="agent-panel__section-title">Soul <span className="agent-panel__section-hint">data/SOUL.md — persona &amp; style, prepended before memory policy</span></div>
+            <textarea
+              className="agent-panel__textarea"
+              value={soul}
+              onChange={e => setSoul(e.target.value)}
+              rows={4}
+              placeholder="You are Hestia, a smart home AI assistant..."
+            />
+            <div className="agent-panel__settings-footer agent-panel__settings-footer--inline">
+              {soulMsg && <span className="agent-panel__save-msg">{soulMsg}</span>}
+              <button className="agent-panel__ghost" type="button" onClick={saveSoul} disabled={savingSoul}>
+                {savingSoul ? 'SAVING…' : 'SAVE SOUL'}
+              </button>
+            </div>
+          </section>
+
+          <section className="agent-panel__section">
+            <div className="agent-panel__section-title">Memory Policy <span className="agent-panel__section-hint">agent.config.json — memory &amp; tool instructions</span></div>
             <textarea
               className="agent-panel__textarea"
               value={draft.systemPrompt}
               onChange={e => setDraft(d => ({ ...d, systemPrompt: e.target.value }))}
               rows={6}
-              placeholder="Enter system prompt..."
+              placeholder="## Pinned Memory..."
             />
           </section>
 

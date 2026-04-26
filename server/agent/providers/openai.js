@@ -64,8 +64,8 @@ export class OpenAIProvider extends Provider {
         continue
       }
 
-      // Already Responses format items (function_call, function_call_output)
-      if (msg.type === 'function_call' || msg.type === 'function_call_output') {
+      // Already Responses format items — pass through as-is
+      if (msg.type === 'function_call' || msg.type === 'function_call_output' || msg.type === 'reasoning') {
         // Drop the id if it has an old call_ prefix — Responses API requires fc_ prefix
         if (msg.type === 'function_call' && msg.id?.startsWith('call_')) {
           const { id: _dropped, ...rest } = msg
@@ -119,13 +119,19 @@ export class OpenAIProvider extends Provider {
         let input = {}
         try { input = JSON.parse(event.item.arguments || '{}') } catch { /* malformed */ }
         yield { type: 'tool_call', id: event.item.call_id, _itemId: event.item.id, name: event.item.name, input }
+      } else if (event.type === 'response.output_item.done' && event.item?.type === 'reasoning') {
+        // Reasoning items must be preserved in history — the API requires them before
+        // their paired function_call items when replaying multi-turn conversations.
+        yield { type: 'reasoning_item', item: event.item }
       }
     }
   }
 
   // Returns an array of Responses API input items representing this assistant turn.
-  static buildAssistantTurn(text, toolCalls) {
+  // reasoningItems must precede function_call items in the array — API requirement.
+  static buildAssistantTurn(text, toolCalls, reasoningItems = []) {
     const items = []
+    for (const r of reasoningItems) items.push(r)
     if (text) items.push({ role: 'assistant', content: text })
     for (const tc of toolCalls) {
       items.push({

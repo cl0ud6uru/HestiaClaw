@@ -1,17 +1,17 @@
 import { Router } from 'express'
 import { readFile, writeFile } from 'node:fs/promises'
-import { readFileSync } from 'node:fs'
-import { runAgentLoop } from './loop.js'
+import { readFileSync, writeFileSync } from 'node:fs'
+import { runAgentLoop, readDailyNotes } from './loop.js'
 import { createProvider } from './providers/index.js'
 import { loadSkills } from './skills.js'
 
-export function createAgentRouter({ provider, session, registry, systemPrompt, mcpManager, approvals, events, settings = {}, skillsDir = null, configPath = null, memoryPath = null, onConsolidate = null }) {
+export function createAgentRouter({ provider, session, registry, systemPrompt, mcpManager, approvals, events, settings = {}, skillsDir = null, configPath = null, memoryPath = null, soulPath = null, notesDir = null, onConsolidate = null }) {
   const getSkills = skillsDir ? () => loadSkills(skillsDir) : () => Promise.resolve([])
   const router = Router()
   let currentProvider = provider
 
   const runtimeSettings = {
-    approvalsEnabled: Boolean(approvals),
+    approvalsEnabled: approvals !== null && (settings.approvalsEnabled !== false),
     systemPrompt,
     model: settings.model || null,
     reasoningEffort: settings.reasoningEffort || null,
@@ -74,6 +74,18 @@ export function createAgentRouter({ provider, session, registry, systemPrompt, m
       try { memorySummary = readFileSync(memoryPath, 'utf8') } catch { /* file may not exist yet */ }
     }
 
+    // Daily notes — today's and yesterday's episodic log
+    const dailyNotes = readDailyNotes(notesDir)
+
+    // Soul — persona prepended to policy at turn time so runtimeSettings.systemPrompt stays policy-only
+    let soulContent = ''
+    if (soulPath) {
+      try { soulContent = readFileSync(soulPath, 'utf8').trim() } catch { /* SOUL.md optional */ }
+    }
+    const fullSystemPrompt = soulContent
+      ? `${soulContent}\n\n${runtimeSettings.systemPrompt}`
+      : runtimeSettings.systemPrompt
+
     // Active memory recall — fast Graphiti search keyed on user message (2s timeout)
     let activeMemory = ''
     if (registry.has('graphiti__search_nodes')) {
@@ -90,13 +102,14 @@ export function createAgentRouter({ provider, session, registry, systemPrompt, m
       provider: currentProvider,
       session,
       registry,
-      systemPrompt: runtimeSettings.systemPrompt,
+      systemPrompt: fullSystemPrompt,
       conversationId,
       userMessage,
       approvals: runtimeSettings.approvalsEnabled ? approvals : null,
       events,
       skills,
       memorySummary,
+      dailyNotes,
       activeMemory,
       allowedTools: runtimeSettings.allowedTools,
       settings: {
@@ -247,6 +260,7 @@ export function createAgentRouter({ provider, session, registry, systemPrompt, m
         ...cfg.harness,
         compactionEnabled: runtimeSettings.compactionEnabled,
         contextMaxMessages: runtimeSettings.contextMaxMessages,
+        approvalsEnabled: runtimeSettings.approvalsEnabled,
         ...(runtimeSettings.reasoningEffort != null ? { reasoningEffort: runtimeSettings.reasoningEffort } : {}),
         ...(runtimeSettings.thinkingBudget != null ? { thinkingBudget: runtimeSettings.thinkingBudget } : {}),
         ...(runtimeSettings.allowedTools !== null ? { allowedTools: runtimeSettings.allowedTools } : { allowedTools: undefined }),
@@ -306,6 +320,27 @@ export function createAgentRouter({ provider, session, registry, systemPrompt, m
     }
     session.forkConversation(sourceConversationId, targetConversationId)
     return res.json({ ok: true })
+  })
+
+  router.get('/soul', (req, res) => {
+    if (!soulPath) return res.status(503).json({ error: 'Soul file not configured.' })
+    try {
+      const soul = readFileSync(soulPath, 'utf8')
+      return res.json({ soul })
+    } catch {
+      return res.json({ soul: '' })
+    }
+  })
+
+  router.post('/soul', (req, res) => {
+    if (!soulPath) return res.status(503).json({ error: 'Soul file not configured.' })
+    const soul = String(req.body?.soul ?? '')
+    try {
+      writeFileSync(soulPath, soul, 'utf8')
+      return res.json({ ok: true })
+    } catch (err) {
+      return res.status(500).json({ error: 'Failed to write SOUL.md.', detail: err.message })
+    }
   })
 
   router.post('/consolidate', async (req, res) => {

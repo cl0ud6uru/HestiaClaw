@@ -1,4 +1,5 @@
-import { readFileSync, writeFileSync } from 'node:fs'
+import { readFileSync, writeFileSync, mkdirSync } from 'node:fs'
+import { join } from 'node:path'
 
 export function registerMemoryTools(registry, memoryPath) {
   registry.register(
@@ -30,5 +31,32 @@ export function registerMemoryTools(registry, memoryPath) {
       return 'MEMORY.md updated successfully.'
     },
     { source: 'builtin', kind: 'write', risk: 'medium', requiresApproval: true },
+  )
+}
+
+export function registerDailyNoteTool(registry, notesDir) {
+  registry.register(
+    'write_daily_note',
+    "Append a timestamped entry to today's daily note log. Use this to record what happened, observations, completed tasks, or anything worth remembering episodically. Today's and yesterday's notes are injected into your context each turn.",
+    {
+      type: 'object',
+      properties: {
+        entry: { type: 'string', description: 'The note entry to append. Plain text or markdown.' },
+      },
+      required: ['entry'],
+    },
+    async ({ entry }) => {
+      const now = new Date()
+      const datestamp = now.toISOString().slice(0, 10)
+      const timestamp = now.toISOString().slice(11, 19)
+      const noteFile = join(notesDir, `${datestamp}.md`)
+      mkdirSync(notesDir, { recursive: true })
+      let existing = ''
+      try { existing = readFileSync(noteFile, 'utf8') } catch { /* file may not exist yet */ }
+      const sep = existing && !existing.endsWith('\n') ? '\n' : ''
+      writeFileSync(noteFile, existing + `${sep}- [${timestamp}] ${String(entry).trim()}\n`, 'utf8')
+      return `Daily note appended for ${datestamp}.`
+    },
+    { source: 'builtin', kind: 'write', risk: 'low', requiresApproval: false },
   )
 }

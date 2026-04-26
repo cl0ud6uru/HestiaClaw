@@ -1,8 +1,27 @@
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { AnthropicProvider } from './providers/anthropic.js'
 import { OpenAIProvider } from './providers/openai.js'
 
 const MAX_ITERATIONS = 10
 const DEFAULT_CONTEXT_MAX_MESSAGES = 40
+
+export function readDailyNotes(notesDir) {
+  if (!notesDir) return ''
+  const now = new Date()
+  const todayStamp = now.toISOString().slice(0, 10)
+  const yesterday = new Date(now)
+  yesterday.setDate(yesterday.getDate() - 1)
+  const yesterdayStamp = yesterday.toISOString().slice(0, 10)
+  const parts = []
+  for (const [label, stamp] of [['Yesterday', yesterdayStamp], ['Today', todayStamp]]) {
+    try {
+      const content = readFileSync(join(notesDir, `${stamp}.md`), 'utf8').trim()
+      if (content) parts.push(`### ${label} (${stamp})\n${content}`)
+    } catch { /* file may not exist — skip silently */ }
+  }
+  return parts.join('\n\n')
+}
 
 /**
  * Emit a single NDJSON line to the response stream.
@@ -19,11 +38,15 @@ function emit(res, event) {
  *   { type: 'done' }
  *   { type: 'error',      message }
  */
-function buildEffectiveSystemPrompt(systemPrompt, summary, skills = [], memorySummary = '', activeMemory = '') {
+function buildEffectiveSystemPrompt(systemPrompt, summary, skills = [], memorySummary = '', dailyNotes = '', activeMemory = '') {
   let prompt = systemPrompt
 
   if (memorySummary) {
     prompt += `\n\n## Pinned Memory\nThese are your confirmed high-confidence long-term memories. Trust these unless directly contradicted.\n\n${memorySummary}`
+  }
+
+  if (dailyNotes) {
+    prompt += `\n\n## Daily Notes\nEpisodic log of recent activity:\n\n${dailyNotes}`
   }
 
   if (activeMemory) {
@@ -54,6 +77,7 @@ export async function runAgentLoop(res, {
   settings = {},
   skills = [],
   memorySummary = '',
+  dailyNotes = '',
   activeMemory = '',
   allowedTools = null,
 }) {
@@ -79,7 +103,7 @@ export async function runAgentLoop(res, {
     maxMessages: settings.contextMaxMessages || DEFAULT_CONTEXT_MAX_MESSAGES,
     compactionEnabled: settings.compactionEnabled !== false,
   })
-  const effectiveSystemPrompt = buildEffectiveSystemPrompt(systemPrompt, context.summary, skills, memorySummary, activeMemory)
+  const effectiveSystemPrompt = buildEffectiveSystemPrompt(systemPrompt, context.summary, skills, memorySummary, dailyNotes, activeMemory)
   if (context.summary) {
     emit(res, { type: 'context_summary', messageCount: context.totalMessages, keptMessages: context.messages.length })
     session.recordRunEvent(runId, 'context_summary', {
@@ -106,6 +130,7 @@ export async function runAgentLoop(res, {
       let textContent = ''
       const toolCallsThisCycle = []
       const thinkingBlocksThisCycle = []
+      const reasoningItemsThisCycle = []
       await events?.emit('model_start', { runId, iteration: iterations })
       session.recordRunEvent(runId, 'model_start', { iteration: iterations })
 
@@ -128,6 +153,8 @@ export async function runAgentLoop(res, {
           session.startToolCall(runId, event)
         } else if (event.type === 'thinking_block') {
           thinkingBlocksThisCycle.push({ type: 'thinking', thinking: event.content })
+        } else if (event.type === 'reasoning_item') {
+          reasoningItemsThisCycle.push(event.item)
         }
         // thinking_token events are not forwarded to the client — preserved in history only
       }
@@ -164,7 +191,7 @@ export async function runAgentLoop(res, {
         assistantTurn = AnthropicProvider.buildAssistantTurn(contentParts)
         messages.push(assistantTurn)
       } else if (isOpenAI) {
-        assistantTurn = OpenAIProvider.buildAssistantTurn(textContent, toolCallsThisCycle)
+        assistantTurn = OpenAIProvider.buildAssistantTurn(textContent, toolCallsThisCycle, reasoningItemsThisCycle)
         messages.push(...assistantTurn)
       } else {
         assistantTurn = { role: 'assistant', content: textContent }

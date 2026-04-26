@@ -1,8 +1,8 @@
 import { readFileSync } from 'node:fs'
 import { Router } from 'express'
-import { runAgentLoop } from './loop.js'
+import { runAgentLoop, readDailyNotes } from './loop.js'
 
-export function createWebhookRouter({ provider, session, registry, systemPrompt, approvals, events, settings = {}, memoryPath = null }) {
+export function createWebhookRouter({ provider, session, registry, systemPrompt, approvals, events, settings = {}, memoryPath = null, soulPath = null, notesDir = null }) {
   const router = Router()
   const WEBHOOK_SECRET = process.env.WEBHOOK_SECRET || null
 
@@ -53,6 +53,16 @@ export function createWebhookRouter({ provider, session, registry, systemPrompt,
       try { memorySummary = readFileSync(memoryPath, 'utf8') } catch { /* may not exist yet */ }
     }
 
+    // Daily notes — today's and yesterday's episodic log
+    const dailyNotes = readDailyNotes(notesDir)
+
+    // Soul — prepend persona to policy so systemPrompt stays policy-only in config
+    let soulContent = ''
+    if (soulPath) {
+      try { soulContent = readFileSync(soulPath, 'utf8').trim() } catch { /* SOUL.md optional */ }
+    }
+    const fullSystemPrompt = soulContent ? `${soulContent}\n\n${systemPrompt}` : systemPrompt
+
     // Parse exposed_entities from HA — gives agent immediate entity awareness
     let entityContext = ''
     if (req.body?.exposed_entities) {
@@ -87,13 +97,14 @@ export function createWebhookRouter({ provider, session, registry, systemPrompt,
       provider,
       session,
       registry,
-      systemPrompt,
+      systemPrompt: fullSystemPrompt,
       conversationId,
       userMessage: query,
       approvals: null,
       events,
       skills: [],
       memorySummary,
+      dailyNotes,
       activeMemory,
       allowedTools: Array.isArray(settings.allowedTools) ? settings.allowedTools : null,
       settings: {

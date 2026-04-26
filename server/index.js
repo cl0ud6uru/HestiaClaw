@@ -20,7 +20,7 @@ import { createProvider } from './agent/providers/index.js'
 import { AgentSession } from './agent/session.js'
 import { ToolRegistry } from './agent/tools/registry.js'
 import { registerWebSearch } from './agent/tools/builtin/web-search.js'
-import { registerMemoryTools } from './agent/tools/builtin/memory-file.js'
+import { registerMemoryTools, registerDailyNoteTool } from './agent/tools/builtin/memory-file.js'
 import { McpClientManager } from './agent/mcp/client.js'
 import { loadSkills } from './agent/skills.js'
 import { runConsolidation } from './agent/memory-consolidation.js'
@@ -51,6 +51,8 @@ const NEO4J_PASSWORD = process.env.NEO4J_PASSWORD || ''
 
 const AGENT_CONFIG_PATH = path.resolve(ROOT_DIR, 'agent.config.json')
 const MEMORY_PATH = path.resolve(DATA_DIR, 'MEMORY.md')
+const SOUL_PATH = path.resolve(DATA_DIR, 'SOUL.md')
+const NOTES_DIR = path.resolve(DATA_DIR, 'notes')
 let agentConfig = null
 try {
   agentConfig = JSON.parse(fs.readFileSync(AGENT_CONFIG_PATH, 'utf8'))
@@ -69,6 +71,13 @@ if (!fs.existsSync(MEMORY_PATH)) {
   fs.writeFileSync(MEMORY_PATH, '# Hestia Memory\n\n*No pinned memories yet. The consolidation cron will populate this file.*\n', 'utf8')
   console.log('[memory] data/MEMORY.md created')
 }
+
+if (!fs.existsSync(SOUL_PATH)) {
+  fs.writeFileSync(SOUL_PATH, 'You are Hestia, a smart home AI assistant. You are precise, helpful, and professional. Be concise but thorough.\n', 'utf8')
+  console.log('[soul] data/SOUL.md created')
+}
+
+fs.mkdirSync(NOTES_DIR, { recursive: true })
 
 if (TRUST_PROXY) {
   app.set('trust proxy', Number.isNaN(Number(TRUST_PROXY)) ? TRUST_PROXY : Number(TRUST_PROXY))
@@ -648,6 +657,7 @@ if (agentConfig) {
   const registry = new ToolRegistry()
   registerWebSearch(registry)
   registerMemoryTools(registry, MEMORY_PATH)
+  registerDailyNoteTool(registry, NOTES_DIR)
 
   mcpManager = new McpClientManager(registry)
   await mcpManager.init(agentConfig.mcpServers || {})
@@ -686,6 +696,8 @@ if (agentConfig) {
       skillsDir: path.join(ROOT_DIR, 'skills'),
       configPath: AGENT_CONFIG_PATH,
       memoryPath: MEMORY_PATH,
+      soulPath: SOUL_PATH,
+      notesDir: NOTES_DIR,
       onConsolidate: consolidate,
     })
     app.use('/api/agent', requireSameOrigin, requireAuth, agentRouter)
@@ -699,6 +711,8 @@ if (agentConfig) {
       events,
       settings: harnessSettings,
       memoryPath: MEMORY_PATH,
+      soulPath: SOUL_PATH,
+      notesDir: NOTES_DIR,
     })
     app.use('/api/webhook', webhookRouter)
     console.log('[agent] Webhook endpoint active at POST /api/webhook/conversation')

@@ -40,6 +40,15 @@
   text-transform: uppercase;
 }
 
+.agent-panel__section-hint {
+  color: rgba(0, 200, 255, 0.35);
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+  text-transform: none;
+  margin-left: 6px;
+}
+
 .agent-panel__title {
   color: #e4f8ff;
   font-family: 'Rajdhani', sans-serif;
@@ -432,6 +441,12 @@
   margin-top: 16px;
   padding-top: 12px;
   border-top: 1px solid rgba(0, 180, 255, 0.14);
+}
+
+.agent-panel__settings-footer--inline {
+  border-top: none;
+  margin-top: 6px;
+  padding-top: 0;
 }
 
 .agent-panel__save-msg {
