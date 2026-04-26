@@ -29,6 +29,6 @@ export function registerMemoryTools(registry, memoryPath) {
       writeFileSync(memoryPath, String(content), 'utf8')
       return 'MEMORY.md updated successfully.'
     },
-    { source: 'builtin', kind: 'write', risk: 'medium' },
+    { source: 'builtin', kind: 'write', risk: 'medium', requiresApproval: true },
   )
 }

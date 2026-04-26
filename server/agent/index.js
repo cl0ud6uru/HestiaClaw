@@ -18,6 +18,7 @@ export function createAgentRouter({ provider, session, registry, systemPrompt, m
     thinkingBudget: settings.thinkingBudget || null,
     contextMaxMessages: settings.contextMaxMessages || 40,
     compactionEnabled: settings.compactionEnabled !== false,
+    allowedTools: Array.isArray(settings.allowedTools) ? settings.allowedTools : null,
   }
 
   router.post('/chat', async (req, res) => {
@@ -97,6 +98,7 @@ export function createAgentRouter({ provider, session, registry, systemPrompt, m
       skills,
       memorySummary,
       activeMemory,
+      allowedTools: runtimeSettings.allowedTools,
       settings: {
         contextMaxMessages: runtimeSettings.contextMaxMessages,
         compactionEnabled: runtimeSettings.compactionEnabled,
@@ -140,6 +142,7 @@ export function createAgentRouter({ provider, session, registry, systemPrompt, m
         model: runtimeSettings.model,
         reasoningEffort: runtimeSettings.reasoningEffort,
         thinkingBudget: runtimeSettings.thinkingBudget,
+        allowedTools: runtimeSettings.allowedTools,
         providerDefault: currentProvider.model,
         providerName: currentProvider.name,
       },
@@ -246,6 +249,7 @@ export function createAgentRouter({ provider, session, registry, systemPrompt, m
         contextMaxMessages: runtimeSettings.contextMaxMessages,
         ...(runtimeSettings.reasoningEffort != null ? { reasoningEffort: runtimeSettings.reasoningEffort } : {}),
         ...(runtimeSettings.thinkingBudget != null ? { thinkingBudget: runtimeSettings.thinkingBudget } : {}),
+        ...(runtimeSettings.allowedTools !== null ? { allowedTools: runtimeSettings.allowedTools } : { allowedTools: undefined }),
       }
       await writeFile(configPath, JSON.stringify(cfg, null, 2) + '\n', 'utf8')
     } catch (err) {
@@ -284,6 +288,9 @@ export function createAgentRouter({ provider, session, registry, systemPrompt, m
     }
     if (typeof body.compactionEnabled === 'boolean') {
       runtimeSettings.compactionEnabled = body.compactionEnabled
+    }
+    if ('allowedTools' in body) {
+      runtimeSettings.allowedTools = Array.isArray(body.allowedTools) ? body.allowedTools : null
     }
 
     persistSettings()

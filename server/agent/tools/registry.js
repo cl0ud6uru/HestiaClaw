@@ -38,12 +38,15 @@ export class ToolRegistry {
     }
   }
 
-  getDefinitions() {
-    return Array.from(this._tools.values()).map(({ name, description, parameters }) => ({
-      name,
-      description,
-      parameters,
-    }))
+  getDefinitions(allowedTools = null) {
+    const tools = Array.from(this._tools.values())
+    const filtered = allowedTools === null
+      ? tools
+      : tools.filter(t => allowedTools.some(p =>
+          p === '*' ||
+          (p.endsWith('__*') ? t.name.startsWith(p.slice(0, -1)) : t.name === p)
+        ))
+    return filtered.map(({ name, description, parameters }) => ({ name, description, parameters }))
   }
 
   listTools() {

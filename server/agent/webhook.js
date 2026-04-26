@@ -95,6 +95,7 @@ export function createWebhookRouter({ provider, session, registry, systemPrompt,
       skills: [],
       memorySummary,
       activeMemory,
+      allowedTools: Array.isArray(settings.allowedTools) ? settings.allowedTools : null,
       settings: {
         contextMaxMessages: settings.contextMaxMessages || 40,
         compactionEnabled: settings.compactionEnabled !== false,

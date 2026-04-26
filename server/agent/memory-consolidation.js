@@ -37,13 +37,13 @@ export async function runConsolidation({ provider, registry, memoryPath }) {
   let homeEpisodes = ''
 
   try {
-    userEpisodes = await registry.execute('graphiti__get_episodes', { group_id: 'hestia_user', last_n: 100 })
+    userEpisodes = await registry.execute('graphiti__get_episodes', { group_ids: ['hestia_user'], max_episodes: 100 })
   } catch (err) {
     console.warn('[consolidation] Could not fetch hestia_user episodes:', err.message)
   }
 
   try {
-    homeEpisodes = await registry.execute('graphiti__get_episodes', { group_id: 'hestia_home', last_n: 100 })
+    homeEpisodes = await registry.execute('graphiti__get_episodes', { group_ids: ['hestia_home'], max_episodes: 100 })
   } catch (err) {
     console.warn('[consolidation] Could not fetch hestia_home episodes:', err.message)
   }
@@ -88,7 +88,7 @@ export async function runConsolidation({ provider, registry, memoryPath }) {
   const toDelete = Array.isArray(plan.episodes_to_delete) ? plan.episodes_to_delete : []
   for (const uuid of toDelete) {
     try {
-      await registry.execute('graphiti__delete_episode', { episode_id: String(uuid) })
+      await registry.execute('graphiti__delete_episode', { uuid: String(uuid) })
       episodesDeleted++
     } catch (err) {
       console.warn(`[consolidation] Could not delete episode ${uuid}:`, err.message)

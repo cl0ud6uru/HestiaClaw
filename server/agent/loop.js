@@ -55,6 +55,7 @@ export async function runAgentLoop(res, {
   skills = [],
   memorySummary = '',
   activeMemory = '',
+  allowedTools = null,
 }) {
   const isAnthropic = provider instanceof AnthropicProvider
   const isOpenAI = provider instanceof OpenAIProvider
@@ -91,7 +92,7 @@ export async function runAgentLoop(res, {
   const userTurn = { role: 'user', content: userMessage }
   const messages = [...history, userTurn]
 
-  const tools = registry.getDefinitions()
+  const tools = registry.getDefinitions(allowedTools)
 
   let iterations = 0
   // These are the new messages generated this turn (for storage)

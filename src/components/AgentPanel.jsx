@@ -14,6 +14,47 @@ const EMPTY_DRAFT = {
   thinkingBudget: '',
   contextMaxMessages: 40,
   compactionEnabled: true,
+  allowedTools: null,
+}
+
+function isSourceFullyAllowed(source, tools, allowedTools) {
+  if (allowedTools === null) return true
+  return allowedTools.includes(`${source}__*`) || tools.every(t => allowedTools.includes(t.name))
+}
+
+function isSourcePartiallyAllowed(source, tools, allowedTools) {
+  if (allowedTools === null || allowedTools.includes(`${source}__*`)) return false
+  return tools.some(t => allowedTools.includes(t.name)) && !tools.every(t => allowedTools.includes(t.name))
+}
+
+function isToolAllowed(toolName, source, allowedTools) {
+  if (allowedTools === null) return true
+  return allowedTools.includes(`${source}__*`) || allowedTools.includes(toolName)
+}
+
+function toggleSource(source, tools, allowedTools, allow) {
+  const pat = `${source}__*`
+  const current = allowedTools || []
+  if (allow) {
+    const cleaned = current.filter(p => p !== pat && !tools.some(t => t.name === p))
+    return [...cleaned, pat]
+  }
+  return current.filter(p => p !== pat && !tools.some(t => t.name === p))
+}
+
+function toggleTool(toolName, source, tools, allowedTools, allow) {
+  const pat = `${source}__*`
+  let current = allowedTools || []
+  if (allow) {
+    if (current.includes(pat) || current.includes(toolName)) return current
+    return [...current, toolName]
+  }
+  if (current.includes(pat)) {
+    const withoutPat = current.filter(p => p !== pat)
+    const rest = tools.filter(t => t.name !== toolName).map(t => t.name)
+    return [...withoutPat, ...rest]
+  }
+  return current.filter(p => p !== toolName)
 }
 
 export default function AgentPanel({ activeConversationTitle, onClose, onForkConversation, configVersion = 0 }) {
@@ -27,6 +68,7 @@ export default function AgentPanel({ activeConversationTitle, onClose, onForkCon
   const [saveMsg, setSaveMsg] = useState('')
   const [models, setModels] = useState([])
   const [modelsLoading, setModelsLoading] = useState(false)
+  const [expandedSources, setExpandedSources] = useState(new Set())
 
   const toolsBySource = useMemo(() => {
     const grouped = new Map()
@@ -76,6 +118,7 @@ export default function AgentPanel({ activeConversationTitle, onClose, onForkCon
         thinkingBudget: json.settings?.thinkingBudget ? String(json.settings.thinkingBudget) : '',
         contextMaxMessages: json.settings?.contextMaxMessages || 40,
         compactionEnabled: json.settings?.compactionEnabled !== false,
+        allowedTools: Array.isArray(json.settings?.allowedTools) ? json.settings.allowedTools : null,
       })
       void fetchModels(json.settings?.providerName)
     } catch (err) {
@@ -120,6 +163,7 @@ export default function AgentPanel({ activeConversationTitle, onClose, onForkCon
           thinkingBudget: draft.thinkingBudget ? Number(draft.thinkingBudget) : null,
           contextMaxMessages: Number(draft.contextMaxMessages) || 40,
           compactionEnabled: draft.compactionEnabled,
+          allowedTools: draft.allowedTools,
         }),
       })
       if (!res.ok) throw new Error('Save failed.')
@@ -394,6 +438,72 @@ export default function AgentPanel({ activeConversationTitle, onClose, onForkCon
                 <span>Compaction enabled</span>
               </label>
             </div>
+          </section>
+
+          <section className="agent-panel__section">
+            <div className="agent-panel__section-title">Tool Filter</div>
+            <label className="agent-panel__field agent-panel__field--checkbox">
+              <input
+                type="checkbox"
+                checked={draft.allowedTools === null}
+                onChange={e => setDraft(d => ({ ...d, allowedTools: e.target.checked ? null : [] }))}
+              />
+              <span>Allow all tools</span>
+            </label>
+            {draft.allowedTools !== null && (
+              <div className="agent-panel__tool-filter">
+                {draft.allowedTools.length === 0 && (
+                  <div className="agent-panel__filter-warning">⚠ No tools selected — agent will have no tools.</div>
+                )}
+                {toolsBySource.map(([source, tools]) => {
+                  const fullyAllowed = isSourceFullyAllowed(source, tools, draft.allowedTools)
+                  const partial = isSourcePartiallyAllowed(source, tools, draft.allowedTools)
+                  const expanded = expandedSources.has(source)
+                  return (
+                    <div key={source} className="agent-panel__filter-group">
+                      <div className="agent-panel__filter-group-header">
+                        <input
+                          type="checkbox"
+                          checked={fullyAllowed}
+                          className={partial ? 'agent-panel__filter-partial' : ''}
+                          onChange={e => setDraft(d => ({
+                            ...d,
+                            allowedTools: toggleSource(source, tools, d.allowedTools, e.target.checked),
+                          }))}
+                        />
+                        <span
+                          className="agent-panel__filter-source"
+                          onClick={() => setExpandedSources(s => {
+                            const n = new Set(s)
+                            n.has(source) ? n.delete(source) : n.add(source)
+                            return n
+                          })}
+                        >
+                          {source} <em>({tools.length})</em> <span className="agent-panel__filter-chevron">{expanded ? '▴' : '▾'}</span>
+                        </span>
+                      </div>
+                      {expanded && (
+                        <div className="agent-panel__filter-tools">
+                          {tools.map(tool => (
+                            <label key={tool.name} className="agent-panel__filter-tool">
+                              <input
+                                type="checkbox"
+                                checked={isToolAllowed(tool.name, source, draft.allowedTools)}
+                                onChange={e => setDraft(d => ({
+                                  ...d,
+                                  allowedTools: toggleTool(tool.name, source, tools, d.allowedTools, e.target.checked),
+                                }))}
+                              />
+                              <span title={tool.description}>{tool.name.replace(/^[^_]+__/, '')}</span>
+                            </label>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            )}
           </section>
 
           <div className="agent-panel__settings-footer">
