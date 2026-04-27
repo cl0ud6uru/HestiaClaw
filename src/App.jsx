@@ -4,6 +4,7 @@ import AgentPanel from './components/AgentPanel'
 import ChatBackground from './components/ChatBackground'
 import ChatInput from './components/ChatInput'
 import ChatMessage from './components/ChatMessage'
+import AutomationsView from './components/AutomationsView'
 import GraphView from './components/GraphView'
 import HeaderOrb from './components/HeaderOrb'
 import LoginScreen from './components/LoginScreen'
@@ -68,6 +69,7 @@ export default function App() {
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [agentPanelOpen, setAgentPanelOpen] = useState(false)
   const [showGraph, setShowGraph] = useState(false)
+  const [showAutomations, setShowAutomations] = useState(false)
   const [memoryPulseAt, setMemoryPulseAt] = useState(null)
   const [agentConfigVersion, setAgentConfigVersion] = useState(0)
   const [skills, setSkills] = useState([])
@@ -1028,6 +1030,12 @@ export default function App() {
               AGENT HARNESS
             </button>
             <button
+              className={`header-account-btn ${showAutomations ? 'header-account-btn--active' : ''}`}
+              onClick={() => setShowAutomations(open => !open)}
+            >
+              AUTOMATIONS
+            </button>
+            <button
               className={`header-account-btn ${showGraph ? 'header-account-btn--active' : ''}`}
               onClick={() => setShowGraph(open => !open)}
             >
@@ -1087,6 +1095,7 @@ export default function App() {
         </div>
       </div>
 
+      {showAutomations && <AutomationsView onClose={() => setShowAutomations(false)} />}
       {showGraph && <GraphView onClose={() => setShowGraph(false)} />}
     </div>
   )
