@@ -1,5 +1,20 @@
 /* ============================================================
    AutomationsView — full-screen HUD overlay
+   Sections:
+     1. Overlay & panel shell
+     2. HUD corner brackets
+     3. Header
+     4. Error bar
+     5. Body layout (two columns)
+     6. Left: automation list
+     7. Right: detail pane & empty state
+     8. Editor fields
+     9. Trigger type tabs
+    10. Schedule builder (freq tabs, pills, time picker, AM/PM)
+    11. Webhook / HA event block
+    12. Action buttons
+    13. Run history table
+    14. Scrollbar styling
    ============================================================ */
 
 .auto-overlay {
@@ -29,7 +44,7 @@
   overflow: hidden;
 }
 
-/* HUD corner brackets */
+/* ── 2. HUD corner brackets ─────────────────────────────────────────────────── */
 .auto-corner {
   position: absolute;
   width: 18px;
@@ -41,7 +56,7 @@
 .auto-corner.bl { bottom: -1px; left: -1px;  border-bottom: 2px solid #00d4ff; border-left: 2px solid #00d4ff; }
 .auto-corner.br { bottom: -1px; right: -1px; border-bottom: 2px solid #00d4ff; border-right: 2px solid #00d4ff; }
 
-/* Header */
+/* ── 3. Header ──────────────────────────────────────────────────────────────── */
 .auto-header {
   display: flex;
   align-items: center;
@@ -106,14 +121,14 @@
   flex-shrink: 0;
 }
 
-/* Body: two-column layout */
+/* ── 5. Body layout ─────────────────────────────────────────────────────────── */
 .auto-body {
   flex: 1;
   display: flex;
   overflow: hidden;
 }
 
-/* LEFT: list pane */
+/* ── 6. Left: automation list ───────────────────────────────────────────────── */
 .auto-list-pane {
   width: 260px;
   flex-shrink: 0;
@@ -201,7 +216,7 @@
   to { transform: rotate(360deg); }
 }
 
-/* RIGHT: detail pane */
+/* ── 7. Right: detail pane & empty state ───────────────────────────────────── */
 .auto-detail-pane {
   flex: 1;
   display: flex;
@@ -240,7 +255,7 @@
   line-height: 1.5;
 }
 
-/* Editor */
+/* ── 8. Editor fields ───────────────────────────────────────────────────────── */
 .auto-editor {
   flex: 1;
   padding: 18px 22px;
@@ -293,7 +308,7 @@
 .auto-textarea { resize: vertical; min-height: 80px; line-height: 1.45; }
 .auto-monospace { font-family: 'JetBrains Mono', 'Courier New', monospace; font-size: 0.82rem; }
 
-/* Trigger type tabs */
+/* ── 9. Trigger type tabs ───────────────────────────────────────────────────── */
 .auto-trigger-tabs {
   display: flex;
   gap: 0;
@@ -336,7 +351,7 @@
   margin-bottom: 10px;
 }
 
-/* Webhook URL display */
+/* ── 11. Webhook / HA event block ───────────────────────────────────────────── */
 .auto-webhook-url-block { margin-top: 10px; }
 
 .auto-webhook-url-row {
@@ -390,7 +405,7 @@
   font-size: 0.78rem;
 }
 
-/* Actions bar */
+/* ── 12. Action buttons ─────────────────────────────────────────────────────── */
 .auto-actions {
   display: flex;
   gap: 8px;
@@ -438,7 +453,7 @@
 }
 .auto-btn--delete:hover { background: rgba(255, 51, 102, 0.1); }
 
-/* Run history */
+/* ── 13. Run history table ──────────────────────────────────────────────────── */
 .auto-history {
   flex-shrink: 0;
   max-height: 260px;
@@ -540,7 +555,7 @@
   color: rgba(0, 212, 255, 0.3);
 }
 
-/* ── Schedule builder ──────────────────────────────────────────────────────── */
+/* ── 10. Schedule builder (freq tabs, pills, time picker) ───────────────────── */
 
 .auto-freq-tabs {
   display: flex;
@@ -659,7 +674,20 @@
   margin-top: 4px;
 }
 
-/* Scrollbar styling */
+.auto-field-error {
+  display: block;
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 0.78rem;
+  color: #ff3366;
+  margin-top: 4px;
+}
+
+.auto-input--error,
+.auto-textarea.auto-input--error {
+  border-color: rgba(255, 51, 102, 0.6) !important;
+}
+
+/* ── 14. Scrollbar styling ──────────────────────────────────────────────────── */
 .auto-list-pane::-webkit-scrollbar,
 .auto-editor::-webkit-scrollbar,
 .auto-history::-webkit-scrollbar,

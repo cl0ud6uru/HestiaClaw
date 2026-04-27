@@ -101,5 +101,95 @@ export function triggerNow(id, triggerContext = '') {
   return runAutomation(id, triggerContext)
 }
 
-// node-cron doesn't expose next-fire calculation; UI computes it from the expression directly
-function computeNextRun() { return null }
+/**
+ * Compute the next UTC timestamp (ms) at which a cron expression will fire,
+ * evaluated in the given IANA timezone. Uses Intl.DateTimeFormat — no extra deps.
+ * Returns null for unsupported / invalid expressions.
+ */
+function computeNextRun(cronExpr, timezone = 'UTC') {
+  try {
+    const parts = cronExpr.trim().split(/\s+/)
+    if (parts.length !== 5) return null
+    const [min, hr, , , dow] = parts
+    const now = Date.now()
+
+    // Helper: get wall-clock {year,month,day,hour,minute} in target TZ for a UTC ms value
+    function wallClock(utcMs) {
+      const fmt = new Intl.DateTimeFormat('en-CA', {
+        timeZone: timezone,
+        year: 'numeric', month: '2-digit', day: '2-digit',
+        hour: '2-digit', minute: '2-digit', second: '2-digit',
+        hour12: false,
+      })
+      const p = {}
+      for (const { type, value } of fmt.formatToParts(new Date(utcMs))) {
+        if (type !== 'literal') p[type] = parseInt(value, 10)
+      }
+      return p
+    }
+
+    // Helper: find the UTC ms for a specific wall-clock time in the target TZ.
+    // Bisects between (approxUtc - 26h) and (approxUtc + 26h) to handle DST.
+    function wallToUTC(year, month, day, hour, minute) {
+      // ISO string as if it were UTC — serves as the starting pivot
+      const pivot = Date.UTC(year, month - 1, day, hour, minute)
+      // Binary search: find utcMs such that wallClock(utcMs) == target
+      let lo = pivot - 26 * 3600000
+      let hi = pivot + 26 * 3600000
+      for (let i = 0; i < 40; i++) {
+        const mid = Math.floor((lo + hi) / 2)
+        const wc = wallClock(mid)
+        const midMin = wc.hour * 60 + wc.minute
+        const targetMin = hour * 60 + minute
+        if (midMin < targetMin) lo = mid + 1
+        else hi = mid
+      }
+      return lo
+    }
+
+    // Hourly: "0 * * * *"
+    if (hr === '*') {
+      const wc = wallClock(now)
+      const base = wallToUTC(wc.year, wc.month, wc.day, wc.hour + 1, 0)
+      return base > now ? base : base + 3600000
+    }
+
+    // Every N hours: "0 */N * * *"
+    const ivMatch = hr.match(/^\*\/(\d+)$/)
+    if (ivMatch) {
+      const interval = parseInt(ivMatch[1])
+      const wc = wallClock(now)
+      const curHour = wc.hour
+      const nextHour = Math.ceil((curHour + (wc.minute > 0 ? 1 : 0)) / interval) * interval % 24
+      const dayOffset = nextHour <= curHour ? 1 : 0
+      const base = wallToUTC(wc.year, wc.month, wc.day + dayOffset, nextHour, 0)
+      return base
+    }
+
+    // Daily or weekly with specific H:M
+    const targetHour = parseInt(hr)
+    const targetMin  = parseInt(min) || 0
+    if (isNaN(targetHour)) return null
+
+    let targetDays = null // null = any day
+    if (dow !== '*') {
+      if (dow === '1-5') targetDays = new Set([1,2,3,4,5])
+      else if (dow === '0,6' || dow === '6,0') targetDays = new Set([0,6])
+      else targetDays = new Set(dow.split(',').map(Number))
+    }
+
+    const wc = wallClock(now)
+    for (let daysAhead = 0; daysAhead <= 7; daysAhead++) {
+      const candidate = wallToUTC(wc.year, wc.month, wc.day + daysAhead, targetHour, targetMin)
+      if (candidate <= now) continue
+      if (targetDays !== null) {
+        const candidateDow = new Date(candidate).getDay()
+        if (!targetDays.has(candidateDow)) continue
+      }
+      return candidate
+    }
+    return null
+  } catch {
+    return null
+  }
+}

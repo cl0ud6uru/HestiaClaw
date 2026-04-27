@@ -62,7 +62,7 @@ function cronToHuman({ freq, hour, minute, ampm, days, interval }) {
   return ''
 }
 
-function CronBuilder({ value, timezone, onChange, onTimezoneChange }) {
+function CronBuilder({ value, timezone, onChange, onTimezoneChange, fieldError }) {
   const [s, set] = useState(() => parseCron(value))
 
   const update = useCallback((patch) => {
@@ -170,12 +170,16 @@ function CronBuilder({ value, timezone, onChange, onTimezoneChange }) {
         <div className="auto-field">
           <label className="auto-label">CRON EXPRESSION</label>
           <input
-            className="auto-input auto-monospace"
+            className={`auto-input auto-monospace${(fieldError || (s.raw && !isValidCron(s.raw))) ? ' auto-input--error' : ''}`}
             value={s.raw}
             onChange={e => { set(p => ({ ...p, raw: e.target.value })); onChange(e.target.value) }}
             placeholder="0 8 * * *"
           />
-          <div className="auto-cron-hint">min · hour · day · month · weekday</div>
+          {s.raw && !isValidCron(s.raw)
+            ? <div className="auto-field-error">Must be 5 fields: min · hour · day · month · weekday</div>
+            : <div className="auto-cron-hint">min · hour · day · month · weekday</div>
+          }
+          {fieldError && isValidCron(s.raw) && <div className="auto-field-error">{fieldError}</div>}
         </div>
       )}
 
@@ -193,6 +197,11 @@ function CronBuilder({ value, timezone, onChange, onTimezoneChange }) {
       </div>
     </div>
   )
+}
+
+function isValidCron(expr) {
+  if (!expr) return false
+  return expr.trim().split(/\s+/).length === 5
 }
 
 // ── List helpers ─────────────────────────────────────────────────────────────
@@ -271,6 +280,7 @@ const initialState = {
   loading: true,
   runningIds: new Set(),
   error: null,
+  fieldErrors: {},
   saved: false,
   expandedRunId: null,
 }
@@ -287,6 +297,7 @@ function reducer(state, action) {
       draft: automationToDraft(action.automation),
       runs: [],
       saved: false,
+      fieldErrors: {},
       expandedRunId: null,
     }
     case 'NEW': return {
@@ -296,9 +307,11 @@ function reducer(state, action) {
       draft: blankDraft(),
       runs: [],
       saved: false,
+      fieldErrors: {},
       expandedRunId: null,
     }
-    case 'DRAFT': return { ...state, draft: { ...state.draft, ...action.patch }, saved: false }
+    case 'DRAFT': return { ...state, draft: { ...state.draft, ...action.patch }, saved: false, fieldErrors: {} }
+    case 'FIELD_ERRORS': return { ...state, fieldErrors: action.errors }
     case 'RUNS_LOADED': return { ...state, runs: action.runs }
     case 'RUN_START': return { ...state, runningIds: new Set([...state.runningIds, action.id]) }
     case 'RUN_END': {
@@ -382,6 +395,19 @@ export default function AutomationsView({ onClose }) {
 
   const handleSave = async () => {
     const { draft, selectedId } = state
+    const errors = {}
+    if (!draft.name.trim()) errors.name = 'Name is required.'
+    if (!draft.prompt.trim()) errors.prompt = 'Prompt is required.'
+    if (draft.trigger_type === 'cron' && !isValidCron(draft.cron_expr)) {
+      errors.cron_expr = 'Enter a valid 5-field cron expression.'
+    }
+    if (draft.trigger_type === 'one_off' && !draft.run_at) {
+      errors.run_at = 'A run-at time is required.'
+    }
+    if (Object.keys(errors).length > 0) {
+      dispatch({ type: 'FIELD_ERRORS', errors })
+      return
+    }
     const body = {
       name: draft.name.trim(),
       description: draft.description.trim(),
@@ -444,7 +470,7 @@ export default function AutomationsView({ onClose }) {
 
   const copyToClipboard = (text) => navigator.clipboard?.writeText(text).catch(() => {})
 
-  const { automations, selectedId, editorActive, draft, runs, loading, runningIds, error, saved, expandedRunId } = state
+  const { automations, selectedId, editorActive, draft, runs, loading, runningIds, error, fieldErrors, saved, expandedRunId } = state
   const selectedAuto = automations.find(a => a.id === selectedId)
 
   return (
@@ -507,11 +533,12 @@ export default function AutomationsView({ onClose }) {
                   <div className="auto-field">
                     <label className="auto-label">NAME</label>
                     <input
-                      className="auto-input"
+                      className={`auto-input${fieldErrors.name ? ' auto-input--error' : ''}`}
                       value={draft.name}
                       onChange={e => handleDraft({ name: e.target.value })}
                       placeholder="Morning briefing"
                     />
+                    {fieldErrors.name && <span className="auto-field-error">{fieldErrors.name}</span>}
                   </div>
 
                   <div className="auto-field">
@@ -527,12 +554,13 @@ export default function AutomationsView({ onClose }) {
                   <div className="auto-field">
                     <label className="auto-label">PROMPT</label>
                     <textarea
-                      className="auto-textarea"
+                      className={`auto-textarea${fieldErrors.prompt ? ' auto-input--error' : ''}`}
                       value={draft.prompt}
                       onChange={e => handleDraft({ prompt: e.target.value })}
                       placeholder="Describe what the agent should do. Be specific about the expected output."
                       rows={4}
                     />
+                    {fieldErrors.prompt && <span className="auto-field-error">{fieldErrors.prompt}</span>}
                   </div>
 
                   <div className="auto-field">
@@ -562,29 +590,24 @@ export default function AutomationsView({ onClose }) {
                       timezone={draft.timezone}
                       onChange={cron_expr => handleDraft({ cron_expr })}
                       onTimezoneChange={timezone => handleDraft({ timezone })}
+                      fieldError={fieldErrors.cron_expr}
                     />
                   )}
 
                   {draft.trigger_type === 'one_off' && (
                     <div className="auto-trigger-fields">
                       <div className="auto-field">
-                        <label className="auto-label">RUN AT</label>
+                        <label className="auto-label">RUN AT (your local time)</label>
                         <input
-                          className="auto-input"
+                          className={`auto-input${fieldErrors.run_at ? ' auto-input--error' : ''}`}
                           type="datetime-local"
                           value={draft.run_at}
                           onChange={e => handleDraft({ run_at: e.target.value })}
                         />
-                      </div>
-                      <div className="auto-field">
-                        <label className="auto-label">TIMEZONE</label>
-                        <select
-                          className="auto-select"
-                          value={draft.timezone}
-                          onChange={e => handleDraft({ timezone: e.target.value })}
-                        >
-                          {TIMEZONES.map(tz => <option key={tz} value={tz}>{tz}</option>)}
-                        </select>
+                        {fieldErrors.run_at
+                          ? <span className="auto-field-error">{fieldErrors.run_at}</span>
+                          : <div className="auto-cron-hint">Time is interpreted in your browser&apos;s local timezone.</div>
+                        }
                       </div>
                     </div>
                   )}
