@@ -57,6 +57,7 @@ export function createAgentRouter({ provider, session, registry, systemPrompt, m
 
     // Detect /skill-name invocation
     let userMessage = message
+    let activatedSkill = null
     if (message.startsWith('/')) {
       const [slashName, ...argParts] = message.slice(1).split(/\s+/)
       const matched = skills.find(s => s.name === slashName && s.userInvocable !== false)
@@ -65,6 +66,7 @@ export function createAgentRouter({ provider, session, registry, systemPrompt, m
         userMessage = args
           ? `${matched.content}\n\nAdditional context: ${args}`
           : matched.content
+        activatedSkill = { name: matched.name, trigger: 'slash', args }
         res.write(JSON.stringify({ type: 'skill_invoked', name: matched.name }) + '\n')
       }
     }
@@ -109,6 +111,7 @@ export function createAgentRouter({ provider, session, registry, systemPrompt, m
       approvals: runtimeSettings.approvalsEnabled ? approvals : null,
       events,
       skills,
+      activatedSkill,
       memorySummary,
       dailyNotes,
       activeMemory,

@@ -13,10 +13,45 @@ function parseFrontmatter(text) {
     const raw = line.slice(colonIdx + 1).trim()
     if (raw === 'true') meta[key] = true
     else if (raw === 'false') meta[key] = false
-    else meta[key] = raw
+    else if (raw.startsWith('[') && raw.endsWith(']')) {
+      // Inline YAML array: [home, morning]
+      meta[key] = raw.slice(1, -1).split(',').map(s => s.trim()).filter(Boolean)
+    } else {
+      meta[key] = raw
+    }
   }
 
   return { meta, body: match[2].trim() }
+}
+
+export function parseSkillManifest(text, sourceName = '') {
+  const { meta, body } = parseFrontmatter(text)
+
+  if (!meta.name) {
+    console.warn(`[skills] ${sourceName}: missing required field 'name' — skipped`)
+    return null
+  }
+  if (!meta.description) {
+    console.warn(`[skills] ${sourceName}: missing required field 'description' — skipped`)
+    return null
+  }
+
+  return {
+    // Agent Skills standard fields
+    name: String(meta.name),
+    description: String(meta.description),
+    license: meta.license ? String(meta.license) : null,
+    compatibility: meta.compatibility ? String(meta.compatibility) : null,
+    // Skill content body
+    content: body,
+    // HestiaClaw extensions
+    argumentHint: meta['argument-hint'] ? String(meta['argument-hint']) : null,
+    userInvocable: meta['user-invocable'] !== false,
+    disableModelInvocation: meta['disable-model-invocation'] === true,
+    webhookSafe: meta['webhook-safe'] === true,
+    tags: Array.isArray(meta.tags) ? meta.tags : [],
+    defaultPolicy: ['allow', 'ask', 'deny'].includes(meta['default-policy']) ? meta['default-policy'] : 'allow',
+  }
 }
 
 export async function loadSkills(skillsDir) {
@@ -35,21 +70,8 @@ export async function loadSkills(skillsDir) {
 
     try {
       const text = await readFile(skillFile, 'utf8')
-      const { meta, body } = parseFrontmatter(text)
-
-      if (!meta.name || !meta.description) {
-        console.warn(`[skills] ${entry.name}/SKILL.md missing name or description — skipped`)
-        continue
-      }
-
-      skills.push({
-        name: String(meta.name),
-        description: String(meta.description),
-        content: body,
-        argumentHint: meta['argument-hint'] ? String(meta['argument-hint']) : null,
-        userInvocable: meta['user-invocable'] !== false,
-        disableModelInvocation: meta['disable-model-invocation'] === true,
-      })
+      const skill = parseSkillManifest(text, `${entry.name}/SKILL.md`)
+      if (skill) skills.push(skill)
     } catch {
       // SKILL.md missing or unreadable — skip
     }

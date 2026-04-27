@@ -76,6 +76,7 @@ export async function runAgentLoop(res, {
   events,
   settings = {},
   skills = [],
+  activatedSkill = null,
   memorySummary = '',
   dailyNotes = '',
   activeMemory = '',
@@ -104,6 +105,15 @@ export async function runAgentLoop(res, {
     compactionEnabled: settings.compactionEnabled !== false,
   })
   const effectiveSystemPrompt = buildEffectiveSystemPrompt(systemPrompt, context.summary, skills, memorySummary, dailyNotes, activeMemory)
+
+  if (activatedSkill) {
+    session.recordRunEvent(runId, 'skill_activated', activatedSkill)
+  }
+  const injectedSkillNames = skills.filter(s => !s.disableModelInvocation).map(s => s.name)
+  if (injectedSkillNames.length > 0) {
+    session.recordRunEvent(runId, 'skill_injected', { skills: injectedSkillNames })
+  }
+
   if (context.summary) {
     emit(res, { type: 'context_summary', messageCount: context.totalMessages, keptMessages: context.messages.length })
     session.recordRunEvent(runId, 'context_summary', {

@@ -3,6 +3,8 @@ name: home-status
 description: Check the current state of all smart home devices and systems — lights, climate, locks, sensors, and media players. Use when asked about what's on, what's off, temperature, or the general state of the home.
 user-invocable: true
 disable-model-invocation: false
+webhook-safe: true
+tags: [home, status]
 ---
 
 Check the current state of the home and provide a concise status report covering:

@@ -294,8 +294,12 @@ export default function AgentPanel({ activeConversationTitle, onClose, onForkCon
                   <div>
                     <strong>/{skill.name}</strong>
                     <span>{skill.description}</span>
+                    {skill.tags?.length > 0 && <em>{skill.tags.join(', ')}</em>}
                   </div>
-                  <b className="agent-panel__status">{skill.argumentHint || 'invoke'}</b>
+                  <div style={{ display: 'flex', gap: '4px', alignItems: 'center', flexShrink: 0 }}>
+                    {skill.webhookSafe && <b className="agent-panel__status agent-panel__status--ok">webhook</b>}
+                    <b className="agent-panel__status">{skill.argumentHint || 'invoke'}</b>
+                  </div>
                 </div>
               ))}
               {!data.skills?.length && <div className="agent-panel__empty">No skills found. Add SKILL.md files to the skills/ directory.</div>}

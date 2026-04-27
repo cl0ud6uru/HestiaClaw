@@ -1,8 +1,12 @@
 import { readFileSync } from 'node:fs'
 import { Router } from 'express'
 import { runAgentLoop, readDailyNotes } from './loop.js'
+import { loadSkills } from './skills.js'
 
-export function createWebhookRouter({ provider, session, registry, systemPrompt, approvals, events, settings = {}, memoryPath = null, soulPath = null, notesDir = null }) {
+export function createWebhookRouter({ provider, session, registry, systemPrompt, events, settings = {}, skillsDir = null, memoryPath = null, soulPath = null, notesDir = null }) {
+  const getWebhookSkills = skillsDir
+    ? async () => (await loadSkills(skillsDir)).filter(s => s.webhookSafe)
+    : () => Promise.resolve([])
   const router = Router()
   const WEBHOOK_SECRET = process.env.WEBHOOK_SECRET || null
 
@@ -93,6 +97,8 @@ export function createWebhookRouter({ provider, session, registry, systemPrompt,
       } catch { /* fail silently — Graphiti may be slow or down */ }
     }
 
+    const skills = await getWebhookSkills()
+
     const loopParams = {
       provider,
       session,
@@ -102,7 +108,7 @@ export function createWebhookRouter({ provider, session, registry, systemPrompt,
       userMessage: query,
       approvals: null,
       events,
-      skills: [],
+      skills,
       memorySummary,
       dailyNotes,
       activeMemory,

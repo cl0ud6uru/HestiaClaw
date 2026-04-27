@@ -22,7 +22,6 @@ import { ToolRegistry } from './agent/tools/registry.js'
 import { registerWebSearch } from './agent/tools/builtin/web-search.js'
 import { registerMemoryTools, registerDailyNoteTool } from './agent/tools/builtin/memory-file.js'
 import { McpClientManager } from './agent/mcp/client.js'
-import { loadSkills } from './agent/skills.js'
 import { runConsolidation } from './agent/memory-consolidation.js'
 import cron from 'node-cron'
 
@@ -707,9 +706,9 @@ if (agentConfig) {
       session: agentSession,
       registry,
       systemPrompt,
-      approvals,
       events,
       settings: harnessSettings,
+      skillsDir: path.join(ROOT_DIR, 'skills'),
       memoryPath: MEMORY_PATH,
       soulPath: SOUL_PATH,
       notesDir: NOTES_DIR,
