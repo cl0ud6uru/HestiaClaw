@@ -23,6 +23,10 @@ import { registerWebSearch } from './agent/tools/builtin/web-search.js'
 import { registerMemoryTools, registerDailyNoteTool } from './agent/tools/builtin/memory-file.js'
 import { McpClientManager } from './agent/mcp/client.js'
 import { runConsolidation } from './agent/memory-consolidation.js'
+import { initDb as initAutomationsDb } from './agent/automations/db.js'
+import { init as initAutomationsRunner } from './agent/automations/runner.js'
+import { syncAll as syncAutomations } from './agent/automations/scheduler.js'
+import { createAutomationsRouter, createTriggerHandler } from './agent/automations/routes.js'
 import cron from 'node-cron'
 
 dotenv.config()
@@ -723,6 +727,16 @@ if (agentConfig) {
       consolidate().catch(err => console.error('[consolidation] Scheduled run failed:', err.message))
     })
     console.log('[consolidation] Daily cron scheduled at 03:00')
+
+    // Automations / scheduled tasks
+    initAutomationsDb(DATABASE_PATH)
+    initAutomationsRunner({ provider, session: agentSession, registry, systemPrompt, settings: harnessSettings, memoryPath: MEMORY_PATH, soulPath: SOUL_PATH, notesDir: NOTES_DIR })
+    syncAutomations()
+
+    // Public webhook trigger (no auth) — must be mounted before the protected router
+    app.use('/api/automations/trigger', createTriggerHandler())
+    app.use('/api/automations', requireSameOrigin, requireAuth, createAutomationsRouter())
+    console.log('[automations] Routes mounted at /api/automations')
   }
 } else {
   console.log('[agent] No agent.config.json found — native harness disabled. Using N8N mode only.')
