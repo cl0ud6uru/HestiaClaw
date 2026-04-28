@@ -25,7 +25,10 @@ export function initDb(dbPath) {
       next_run_at INTEGER,
       created_at INTEGER NOT NULL,
       updated_at INTEGER NOT NULL
-    );
+    );`)
+  // Migration: add conversation_id column (no-op if already present)
+  try { db.exec('ALTER TABLE automations ADD COLUMN conversation_id TEXT') } catch { /* already exists */ }
+  db.exec(`
     CREATE TABLE IF NOT EXISTS automation_runs (
       id TEXT PRIMARY KEY,
       automation_id TEXT NOT NULL REFERENCES automations(id) ON DELETE CASCADE,
@@ -65,10 +68,10 @@ export function create(data) {
   db.prepare(`
     INSERT INTO automations (id, name, description, prompt, enabled, trigger_type,
       cron_expr, timezone, run_at, webhook_secret, ha_entity_id, ha_condition,
-      timeout_seconds, created_at, updated_at)
+      timeout_seconds, conversation_id, created_at, updated_at)
     VALUES (@id, @name, @description, @prompt, @enabled, @trigger_type,
       @cron_expr, @timezone, @run_at, @webhook_secret, @ha_entity_id, @ha_condition,
-      @timeout_seconds, @created_at, @updated_at)
+      @timeout_seconds, @conversation_id, @created_at, @updated_at)
   `).run({
     id,
     name: data.name,
@@ -83,6 +86,7 @@ export function create(data) {
     ha_entity_id: data.ha_entity_id || null,
     ha_condition: data.ha_condition || null,
     timeout_seconds: data.timeout_seconds || 120,
+    conversation_id: data.conversation_id || null,
     created_at: now,
     updated_at: now,
   })
@@ -95,7 +99,7 @@ export function update(id, data) {
   const values = { id, updated_at: now }
   const allowed = ['name', 'description', 'prompt', 'enabled', 'trigger_type',
     'cron_expr', 'timezone', 'run_at', 'webhook_secret', 'ha_entity_id',
-    'ha_condition', 'timeout_seconds', 'next_run_at']
+    'ha_condition', 'timeout_seconds', 'next_run_at', 'conversation_id']
   for (const k of allowed) {
     if (k in data) {
       fields.push(`${k} = @${k}`)

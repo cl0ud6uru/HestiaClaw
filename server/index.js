@@ -21,6 +21,7 @@ import { AgentSession } from './agent/session.js'
 import { ToolRegistry } from './agent/tools/registry.js'
 import { registerWebSearch } from './agent/tools/builtin/web-search.js'
 import { registerMemoryTools, registerDailyNoteTool } from './agent/tools/builtin/memory-file.js'
+import { registerScheduleFollowup } from './agent/tools/builtin/schedule-followup.js'
 import { McpClientManager } from './agent/mcp/client.js'
 import { runConsolidation } from './agent/memory-consolidation.js'
 import { initDb as initAutomationsDb } from './agent/automations/db.js'
@@ -661,6 +662,7 @@ if (agentConfig) {
   registerWebSearch(registry)
   registerMemoryTools(registry, MEMORY_PATH)
   registerDailyNoteTool(registry, NOTES_DIR)
+  registerScheduleFollowup(registry)
 
   mcpManager = new McpClientManager(registry)
   await mcpManager.init(agentConfig.mcpServers || {})

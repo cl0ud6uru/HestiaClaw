@@ -116,6 +116,19 @@ export async function runAutomation(automationId, triggerContext = '') {
 
     db.finishRun(runId, { status: 'success', output, toolsUsed })
     db.updateLastRun(automationId, 'success', nextRunAt)
+
+    // If this automation was created as a conversation follow-up, post the result back
+    if (automation.conversation_id && output) {
+      try {
+        _deps.session.appendMessages(automation.conversation_id, [
+          { role: 'assistant', content: output },
+        ])
+        console.log(`[automations] Follow-up posted to conversation ${automation.conversation_id}`)
+      } catch (err) {
+        console.error(`[automations] Failed to post follow-up to conversation: ${err.message}`)
+      }
+    }
+
     console.log(`[automations] Run ${runId} completed for "${automation.name}"`)
   } catch (err) {
     const isTimeout = err.message === 'timeout'

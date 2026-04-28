@@ -189,6 +189,36 @@ export default function App() {
     return () => clearInterval(interval)
   }, [authUser]) // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Poll active conversation every 15s for new messages posted by scheduled follow-ups.
+  // Uses non-greeting message count as the "server-side count" baseline — the greeting (id:0)
+  // lives only in React state and is not persisted, so a raw length comparison would be off by one.
+  useEffect(() => {
+    if (!authUser || agentMode !== 'agent' || !activeId) return
+    const convId = activeId
+    const interval = setInterval(() => {
+      fetch(`/api/agent/conversations/${convId}/messages`)
+        .then(r => r.ok ? r.json() : null)
+        .then(data => {
+          if (!data?.messages?.length) return
+          setConversations(prev => {
+            const conv = prev.find(c => c.id === convId)
+            if (!conv) return prev
+            // Count messages that came from the server (id !== 0; greeting has id:0)
+            const knownServerCount = conv.messages.filter(m => m.id !== 0).length
+            if (data.messages.length <= knownServerCount) return prev
+            // Append only the new server messages to preserve the greeting and streamed state
+            const newMsgs = data.messages.slice(knownServerCount)
+            return prev.map(c => c.id === convId
+              ? { ...c, messages: [...c.messages, ...newMsgs] }
+              : c
+            )
+          })
+        })
+        .catch(() => {})
+    }, 15000)
+    return () => clearInterval(interval)
+  }, [authUser, activeId, agentMode]) // eslint-disable-line react-hooks/exhaustive-deps
+
   useEffect(() => {
     if (!authUser) return
 
