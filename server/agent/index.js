@@ -1,9 +1,10 @@
 import { Router } from 'express'
-import { readFile, writeFile } from 'node:fs/promises'
+import { readFile, writeFile, mkdir, rm } from 'node:fs/promises'
 import { readFileSync, writeFileSync } from 'node:fs'
+import { join, resolve } from 'node:path'
 import { runAgentLoop, readDailyNotes } from './loop.js'
 import { createProvider } from './providers/index.js'
-import { loadSkills } from './skills.js'
+import { loadSkills, parseSkillManifest } from './skills.js'
 
 export function createAgentRouter({ provider, session, registry, systemPrompt, mcpManager, approvals, events, settings = {}, skillsDir = null, configPath = null, memoryPath = null, soulPath = null, notesDir = null, onConsolidate = null }) {
   const getSkills = skillsDir ? () => loadSkills(skillsDir) : () => Promise.resolve([])
@@ -345,6 +346,66 @@ export function createAgentRouter({ provider, session, registry, systemPrompt, m
     } catch (err) {
       return res.status(500).json({ error: 'Failed to write SOUL.md.', detail: err.message })
     }
+  })
+
+  // Skills CRUD — mirrors what the write_skill / delete_skill builtin tools do, for UI use
+  const VALID_SKILL_NAME = /^[a-z0-9][a-z0-9-]*$/
+
+  router.get('/skills', async (req, res) => {
+    const skills = await getSkills()
+    res.json({ skills })
+  })
+
+  router.get('/skills/:name', async (req, res) => {
+    if (!skillsDir) return res.status(503).json({ error: 'Skills directory not configured.' })
+    const name = String(req.params.name || '').trim()
+    if (!VALID_SKILL_NAME.test(name)) return res.status(400).json({ error: 'Invalid skill name.' })
+    const skillFile = join(skillsDir, name, 'SKILL.md')
+    try {
+      const text = await readFile(skillFile, 'utf8')
+      res.json({ name, raw: text })
+    } catch {
+      res.status(404).json({ error: `Skill "${name}" not found.` })
+    }
+  })
+
+  router.put('/skills/:name', async (req, res) => {
+    if (!skillsDir) return res.status(503).json({ error: 'Skills directory not configured.' })
+    const name = String(req.params.name || '').trim()
+    if (!VALID_SKILL_NAME.test(name) || name.length > 64) {
+      return res.status(400).json({ error: 'Invalid skill name. Use lowercase letters, digits, and hyphens.' })
+    }
+    const raw = String(req.body?.raw || '').trim()
+    if (!raw) return res.status(400).json({ error: 'raw SKILL.md content is required.' })
+
+    const parsed = parseSkillManifest(raw, name)
+    if (!parsed) return res.status(422).json({ error: 'Invalid SKILL.md — missing required name or description fields.' })
+    if (parsed.name !== name) return res.status(422).json({ error: `Skill name in frontmatter ("${parsed.name}") must match the URL parameter ("${name}").` })
+
+    const skillDir = resolve(skillsDir, name)
+    if (!skillDir.startsWith(resolve(skillsDir) + '/')) return res.status(400).json({ error: 'Invalid skill name.' })
+
+    await mkdir(skillDir, { recursive: true })
+    await writeFile(join(skillDir, 'SKILL.md'), raw + '\n', 'utf8')
+    res.json({ ok: true, skill: parsed })
+  })
+
+  router.delete('/skills/:name', async (req, res) => {
+    if (!skillsDir) return res.status(503).json({ error: 'Skills directory not configured.' })
+    const name = String(req.params.name || '').trim()
+    if (!VALID_SKILL_NAME.test(name)) return res.status(400).json({ error: 'Invalid skill name.' })
+
+    const skillDir = resolve(skillsDir, name)
+    if (!skillDir.startsWith(resolve(skillsDir) + '/')) return res.status(400).json({ error: 'Invalid skill name.' })
+
+    try {
+      await readFile(join(skillDir, 'SKILL.md'), 'utf8')
+    } catch {
+      return res.status(404).json({ error: `Skill "${name}" not found.` })
+    }
+
+    await rm(skillDir, { recursive: true, force: true })
+    res.json({ ok: true })
   })
 
   router.post('/consolidate', async (req, res) => {

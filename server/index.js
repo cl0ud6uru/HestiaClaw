@@ -22,6 +22,7 @@ import { ToolRegistry } from './agent/tools/registry.js'
 import { registerWebSearch } from './agent/tools/builtin/web-search.js'
 import { registerMemoryTools, registerDailyNoteTool } from './agent/tools/builtin/memory-file.js'
 import { registerScheduleFollowup } from './agent/tools/builtin/schedule-followup.js'
+import { registerSkillsManagerTools } from './agent/tools/builtin/skills-manager.js'
 import { McpClientManager } from './agent/mcp/client.js'
 import { runConsolidation } from './agent/memory-consolidation.js'
 import { initDb as initAutomationsDb } from './agent/automations/db.js'
@@ -57,6 +58,7 @@ const AGENT_CONFIG_PATH = path.resolve(ROOT_DIR, 'agent.config.json')
 const MEMORY_PATH = path.resolve(DATA_DIR, 'MEMORY.md')
 const SOUL_PATH = path.resolve(DATA_DIR, 'SOUL.md')
 const NOTES_DIR = path.resolve(DATA_DIR, 'notes')
+const SKILLS_DIR = path.join(ROOT_DIR, 'skills')
 let agentConfig = null
 try {
   agentConfig = JSON.parse(fs.readFileSync(AGENT_CONFIG_PATH, 'utf8'))
@@ -663,6 +665,7 @@ if (agentConfig) {
   registerMemoryTools(registry, MEMORY_PATH)
   registerDailyNoteTool(registry, NOTES_DIR)
   registerScheduleFollowup(registry)
+  registerSkillsManagerTools(registry, SKILLS_DIR)
 
   mcpManager = new McpClientManager(registry)
   await mcpManager.init(agentConfig.mcpServers || {})
@@ -698,7 +701,7 @@ if (agentConfig) {
       approvals,
       events,
       settings: harnessSettings,
-      skillsDir: path.join(ROOT_DIR, 'skills'),
+      skillsDir: SKILLS_DIR,
       configPath: AGENT_CONFIG_PATH,
       memoryPath: MEMORY_PATH,
       soulPath: SOUL_PATH,
@@ -714,7 +717,7 @@ if (agentConfig) {
       systemPrompt,
       events,
       settings: harnessSettings,
-      skillsDir: path.join(ROOT_DIR, 'skills'),
+      skillsDir: SKILLS_DIR,
       memoryPath: MEMORY_PATH,
       soulPath: SOUL_PATH,
       notesDir: NOTES_DIR,
