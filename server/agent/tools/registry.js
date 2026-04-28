@@ -15,6 +15,7 @@ export class ToolRegistry {
       risk: metadata.risk || 'low',
       requiresApproval: metadata.requiresApproval === true,
       timeoutMs: Number(metadata.timeoutMs) || null,
+      injectConversationId: metadata.injectConversationId === true,
     })
   }
 
@@ -73,15 +74,18 @@ export class ToolRegistry {
     }))
   }
 
-  async execute(name, input) {
+  async execute(name, input, context = {}) {
     const tool = this._tools.get(name)
     if (!tool) throw new Error(`Tool "${name}" not found in registry`)
-    if (!tool.timeoutMs) return tool.execute(input)
+    const effectiveInput = (tool.injectConversationId && context.conversationId)
+      ? { ...input, conversation_id: context.conversationId }
+      : input
+    if (!tool.timeoutMs) return tool.execute(effectiveInput)
 
     let timeout
     try {
       return await Promise.race([
-        tool.execute(input),
+        tool.execute(effectiveInput),
         new Promise((_, reject) => {
           timeout = setTimeout(() => reject(new Error(`Tool "${name}" timed out after ${tool.timeoutMs}ms`)), tool.timeoutMs)
         }),

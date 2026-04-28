@@ -108,6 +108,7 @@ export class AgentSession {
         MAX(r.started_at) AS updatedAt,
         (SELECT user_message FROM agent_runs WHERE conversation_id = r.conversation_id ORDER BY started_at ASC LIMIT 1) AS firstMessage
       FROM agent_runs r
+      WHERE r.conversation_id NOT LIKE 'auto_%'
       GROUP BY r.conversation_id
       ORDER BY MAX(r.started_at) DESC
       LIMIT ?

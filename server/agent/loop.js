@@ -247,7 +247,7 @@ export async function runAgentLoop(res, {
               throw new Error(decision.reason || `Tool "${tc.name}" was denied by policy.`)
             }
           }
-          result = await registry.execute(tc.name, tc.input)
+          result = await registry.execute(tc.name, tc.input, { conversationId })
           hasError = false
         } catch (err) {
           result = `Error: ${err.message}`
