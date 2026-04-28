@@ -1,7 +1,7 @@
 import { Router } from 'express'
 import { readFile, writeFile, mkdir, rm } from 'node:fs/promises'
 import { readFileSync, writeFileSync } from 'node:fs'
-import { join, resolve } from 'node:path'
+import { join, resolve, relative, isAbsolute } from 'node:path'
 import { runAgentLoop, readDailyNotes } from './loop.js'
 import { createProvider } from './providers/index.js'
 import { loadSkills, parseSkillManifest } from './skills.js'
@@ -348,8 +348,20 @@ export function createAgentRouter({ provider, session, registry, systemPrompt, m
     }
   })
 
-  // Skills CRUD — mirrors what the write_skill / delete_skill builtin tools do, for UI use
+  // Skills CRUD — REST interface for the skills/ directory, intended for UI use.
+  // Note on approval: PUT and DELETE here bypass the agent approval flow by design.
+  // These routes are protected by requireAuth (mounted in server/index.js), so only
+  // an authenticated admin user can reach them. The approval flow exists for unilateral
+  // LLM tool calls; a deliberate API request from a logged-in user is itself the approval.
   const VALID_SKILL_NAME = /^[a-z0-9][a-z0-9-]*$/
+
+  function guardSkillPath(name) {
+    const resolvedDir = resolve(skillsDir)
+    const skillDir = resolve(skillsDir, name)
+    const rel = relative(resolvedDir, skillDir)
+    if (!rel || rel.startsWith('..') || isAbsolute(rel)) return null
+    return skillDir
+  }
 
   router.get('/skills', async (req, res) => {
     const skills = await getSkills()
@@ -382,8 +394,8 @@ export function createAgentRouter({ provider, session, registry, systemPrompt, m
     if (!parsed) return res.status(422).json({ error: 'Invalid SKILL.md — missing required name or description fields.' })
     if (parsed.name !== name) return res.status(422).json({ error: `Skill name in frontmatter ("${parsed.name}") must match the URL parameter ("${name}").` })
 
-    const skillDir = resolve(skillsDir, name)
-    if (!skillDir.startsWith(resolve(skillsDir) + '/')) return res.status(400).json({ error: 'Invalid skill name.' })
+    const skillDir = guardSkillPath(name)
+    if (!skillDir) return res.status(400).json({ error: 'Invalid skill name.' })
 
     await mkdir(skillDir, { recursive: true })
     await writeFile(join(skillDir, 'SKILL.md'), raw + '\n', 'utf8')
@@ -395,8 +407,8 @@ export function createAgentRouter({ provider, session, registry, systemPrompt, m
     const name = String(req.params.name || '').trim()
     if (!VALID_SKILL_NAME.test(name)) return res.status(400).json({ error: 'Invalid skill name.' })
 
-    const skillDir = resolve(skillsDir, name)
-    if (!skillDir.startsWith(resolve(skillsDir) + '/')) return res.status(400).json({ error: 'Invalid skill name.' })
+    const skillDir = guardSkillPath(name)
+    if (!skillDir) return res.status(400).json({ error: 'Invalid skill name.' })
 
     try {
       await readFile(join(skillDir, 'SKILL.md'), 'utf8')

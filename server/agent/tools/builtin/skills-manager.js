@@ -1,8 +1,9 @@
 import { readFile, writeFile, mkdir, rm, readdir } from 'node:fs/promises'
-import { join, resolve } from 'node:path'
+import { join, resolve, relative, isAbsolute } from 'node:path'
 import { parseSkillManifest } from '../../skills.js'
 
 const VALID_NAME = /^[a-z0-9][a-z0-9-]*$/
+const VALID_TAG = /^[a-z0-9][a-z0-9-]*$/
 
 function validateName(name) {
   if (!name || typeof name !== 'string') throw new Error('Skill name is required.')
@@ -10,15 +11,35 @@ function validateName(name) {
   if (name.length > 64) throw new Error('Skill name must be 64 characters or fewer.')
 }
 
+function guardPath(resolvedDir, skillDir) {
+  const rel = relative(resolvedDir, skillDir)
+  if (!rel || rel.startsWith('..') || isAbsolute(rel)) {
+    throw new Error('Invalid skill name — path traversal detected.')
+  }
+}
+
+// Double-quote YAML scalar values that contain characters with special meaning in YAML.
+function yamlScalar(str) {
+  if (/[:#[\]{},'"!*?\n\\]/.test(str) || /^\s|\s$/.test(str)) {
+    return '"' + str.replace(/\\/g, '\\\\').replace(/"/g, '\\"').replace(/\n/g, '\\n') + '"'
+  }
+  return str
+}
+
 function buildSkillMd({ name, description, content, userInvocable, webhookSafe, disableModelInvocation, tags, defaultPolicy, argumentHint }) {
-  const lines = ['---', `name: ${name}`, `description: ${description}`]
+  if (Array.isArray(tags)) {
+    const bad = tags.find(t => !VALID_TAG.test(t))
+    if (bad) throw new Error(`Invalid tag "${bad}". Tags must be lowercase letters, digits, and hyphens only.`)
+  }
+
+  const lines = ['---', `name: ${name}`, `description: ${yamlScalar(description)}`]
 
   if (typeof userInvocable === 'boolean') lines.push(`user-invocable: ${userInvocable}`)
   if (typeof disableModelInvocation === 'boolean') lines.push(`disable-model-invocation: ${disableModelInvocation}`)
   if (typeof webhookSafe === 'boolean') lines.push(`webhook-safe: ${webhookSafe}`)
   if (Array.isArray(tags) && tags.length > 0) lines.push(`tags: [${tags.join(', ')}]`)
   if (defaultPolicy && ['allow', 'ask', 'deny'].includes(defaultPolicy)) lines.push(`default-policy: ${defaultPolicy}`)
-  if (argumentHint) lines.push(`argument-hint: ${argumentHint}`)
+  if (argumentHint) lines.push(`argument-hint: ${yamlScalar(argumentHint)}`)
 
   lines.push('---', '', content.trim())
   return lines.join('\n') + '\n'
@@ -106,10 +127,7 @@ export function registerSkillsManagerTools(registry, skillsDir) {
 
       const resolvedDir = resolve(skillsDir)
       const skillDir = resolve(skillsDir, name)
-      // Guard against path traversal after resolve
-      if (!skillDir.startsWith(resolvedDir + '/')) {
-        throw new Error('Invalid skill name — path traversal detected.')
-      }
+      guardPath(resolvedDir, skillDir)
 
       const md = buildSkillMd({
         name,
@@ -152,9 +170,7 @@ export function registerSkillsManagerTools(registry, skillsDir) {
 
       const resolvedDir = resolve(skillsDir)
       const skillDir = resolve(skillsDir, name)
-      if (!skillDir.startsWith(resolvedDir + '/')) {
-        throw new Error('Invalid skill name — path traversal detected.')
-      }
+      guardPath(resolvedDir, skillDir)
 
       try {
         await readFile(join(skillDir, 'SKILL.md'), 'utf8')
