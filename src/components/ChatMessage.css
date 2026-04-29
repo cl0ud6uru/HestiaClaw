@@ -256,6 +256,7 @@
   }
 
   .msg-bubble {
-    word-break: break-word;
+    overflow-wrap: anywhere;
+    word-break: break-word; /* fallback for older WebKit */
   }
 }

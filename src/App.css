@@ -201,6 +201,10 @@
 /* Scrim — hidden on desktop, shown on mobile when sidebar is open */
 .sidebar-scrim {
   display: none;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  cursor: default;
 }
 
 @media (max-width: 768px) {
@@ -249,6 +253,9 @@
     flex: 1 1 calc(33.33% - 4px);
     text-align: center;
     min-width: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   .messages-area {

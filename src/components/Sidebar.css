@@ -306,6 +306,7 @@
     position: fixed;
     top: 0;
     left: 0;
+    height: 100vh;
     height: 100dvh;
     width: 260px;
     transform: translateX(0);
@@ -317,16 +318,6 @@
     width: 260px;
     transform: translateX(-100%);
     border-right: none;
-  }
-
-  /* Restore content that the desktop collapsed state hides */
-  .sidebar--collapsed .sidebar-search,
-  .sidebar--collapsed .sidebar-mode-toggle,
-  .sidebar--collapsed .sidebar-footer {
-    display: flex;
-  }
-  .sidebar--collapsed .sidebar-section-label {
-    display: block;
   }
 
   /* Larger tap targets */
