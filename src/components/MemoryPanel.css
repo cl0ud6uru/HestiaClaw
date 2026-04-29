@@ -198,8 +198,11 @@
   user-select: none;
 }
 
-.memory-history-row:hover {
+.memory-history-row:hover,
+.memory-history-row:focus-visible {
   background: rgba(0, 40, 80, 0.4);
+  outline: 1px solid rgba(0, 212, 255, 0.35);
+  outline-offset: -1px;
 }
 
 .memory-history-chevron {

@@ -1,6 +1,6 @@
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs'
 import { join } from 'node:path'
-import { appendHistory } from '../../memory-history-store.js'
+import { writeMemory } from '../../memory-history-store.js'
 
 export function registerMemoryTools(registry, memoryPath, historyPath = null) {
   registry.register(
@@ -28,12 +28,7 @@ export function registerMemoryTools(registry, memoryPath, historyPath = null) {
       required: ['content'],
     },
     async ({ content }) => {
-      let previousContent = ''
-      try { previousContent = readFileSync(memoryPath, 'utf8') } catch { /* file may not exist */ }
-      writeFileSync(memoryPath, String(content), 'utf8')
-      if (historyPath) {
-        appendHistory(historyPath, { source: 'agent', previousContent, newContent: String(content) })
-      }
+      await writeMemory(memoryPath, historyPath, { newContent: String(content), source: 'agent' })
       return 'MEMORY.md updated successfully.'
     },
     { source: 'builtin', kind: 'write', risk: 'medium', requiresApproval: true },

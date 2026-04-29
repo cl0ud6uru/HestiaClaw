@@ -27,17 +27,27 @@ function SourceBadge({ source }) {
 function HistoryEntry({ entry, onRestore, restoring }) {
   const [expanded, setExpanded] = useState(false)
   const { added, removed } = lineDiff(entry.previousContent, entry.newContent)
+  const dateLabel = new Date(entry.changedAt).toLocaleString()
+
+  function toggle() { setExpanded(e => !e) }
 
   return (
     <div className="memory-history-entry">
-      <div className="memory-history-row" onClick={() => setExpanded(e => !e)}>
-        <span className="memory-history-chevron">{expanded ? '▾' : '▸'}</span>
+      <div
+        className="memory-history-row"
+        role="button"
+        tabIndex={0}
+        aria-expanded={expanded}
+        onClick={toggle}
+        onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle() } }}
+      >
+        <span className="memory-history-chevron" aria-hidden="true">{expanded ? '▾' : '▸'}</span>
         <SourceBadge source={entry.source} />
-        <span className="memory-history-time" title={new Date(entry.changedAt).toLocaleString()}>
+        <span className="memory-history-time" title={dateLabel}>
           {timeAgo(entry.changedAt)}
         </span>
-        {added > 0 && <span className="memory-diff-added">+{added}</span>}
-        {removed > 0 && <span className="memory-diff-removed">−{removed}</span>}
+        {added > 0 && <span className="memory-diff-added" aria-label={`${added} lines added`}>+{added}</span>}
+        {removed > 0 && <span className="memory-diff-removed" aria-label={`${removed} lines removed`}>−{removed}</span>}
         {entry.episodesDeleted?.length > 0 && (
           <span className="memory-diff-episodes">{entry.episodesDeleted.length} ep. deleted</span>
         )}
@@ -45,7 +55,7 @@ function HistoryEntry({ entry, onRestore, restoring }) {
           className="memory-restore-btn"
           onClick={e => { e.stopPropagation(); onRestore(entry.id) }}
           disabled={restoring}
-          title="Restore MEMORY.md to its state before this change"
+          aria-label={`Restore MEMORY.md to state before ${dateLabel}`}
         >
           {restoring ? 'restoring…' : 'RESTORE'}
         </button>
@@ -178,6 +188,7 @@ export default function MemoryPanel({ onClose }) {
                 value={draft}
                 onChange={e => setDraft(e.target.value)}
                 spellCheck={false}
+                aria-label="Edit MEMORY.md content"
               />
               <div className="memory-edit-actions">
                 <button className="memory-btn memory-btn-primary" onClick={handleSave} disabled={saving}>
