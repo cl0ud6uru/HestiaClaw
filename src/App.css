@@ -198,31 +198,89 @@
   z-index: 1;
 }
 
-@media (max-width: 640px) {
-  .app-header {
-    padding-top: 20px;
+/* Scrim — hidden on desktop, shown on mobile when sidebar is open */
+.sidebar-scrim {
+  display: none;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  cursor: default;
+}
+
+@media (max-width: 768px) {
+  /* Sidebar becomes a fixed overlay — scrim fills the rest of the screen */
+  .sidebar-scrim {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 150;
+    background: rgba(0, 0, 0, 0.55);
+  }
+  .sidebar-scrim--visible {
+    display: block;
+  }
+
+  /* Anchor toggle to top of header, not vertical-middle of the (now tall) header */
+  .header-toggle {
+    top: 14px;
+    transform: none;
+    width: 36px;
+    height: 36px;
+    font-size: 1.1rem;
   }
 
   .app-title {
-    font-size: 1.35rem;
-    letter-spacing: 0.24em;
+    font-size: clamp(1.1rem, 5vw, 1.9rem);
+    letter-spacing: clamp(0.2em, 2vw, 0.45em);
   }
 
-  .app-subtitle {
-    font-size: 0.42rem;
-    letter-spacing: 0.22em;
-    text-align: center;
+  /* Hide decorative subtitle and rule — save vertical space on mobile */
+  .app-subtitle,
+  .header-line {
+    display: none;
   }
 
   .header-actions {
     width: 100%;
     justify-content: center;
     flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 8px;
   }
 
   .header-account-btn,
   .header-logout-btn {
-    width: calc(50% - 6px);
+    flex: 1 1 calc(33.33% - 4px);
     text-align: center;
+    min-width: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .messages-area {
+    padding: 12px 10px;
+    gap: 10px;
+  }
+}
+
+@media (max-width: 480px) {
+  .app-header {
+    padding: 12px 14px 10px;
+  }
+
+  .header-actions {
+    margin-top: 6px;
+    gap: 5px;
+  }
+
+  .header-account-btn,
+  .header-logout-btn {
+    font-size: 0.52rem;
+    padding: 7px 8px;
+  }
+
+  .messages-area {
+    padding: 10px 8px;
   }
 }

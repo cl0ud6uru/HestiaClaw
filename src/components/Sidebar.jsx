@@ -19,7 +19,11 @@ export default function Sidebar({ conversations, activeId, onNew, onSelect, onDe
     : sorted
 
   return (
-    <aside className={`sidebar ${isOpen ? '' : 'sidebar--collapsed'}`}>
+    <aside
+      className={`sidebar ${isOpen ? '' : 'sidebar--collapsed'}`}
+      aria-hidden={!isOpen}
+      inert={!isOpen ? '' : undefined}
+    >
       <div className="sidebar-header">
         <button className="new-chat-btn" onClick={onNew} title="New Chat">
           <span className="new-chat-icon">+</span>

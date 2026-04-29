@@ -265,3 +265,10 @@
 .data-bars span:nth-child(3) { animation-delay: 0.3s;  }
 .data-bars span:nth-child(4) { animation-delay: 0.45s; }
 .data-bars span:nth-child(5) { animation-delay: 0.6s;  }
+
+@media (max-width: 768px) {
+  .thinking-hud {
+    width: auto;
+    max-width: 90vw;
+  }
+}
