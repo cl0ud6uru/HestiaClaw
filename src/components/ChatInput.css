@@ -229,3 +229,18 @@
 
 .status-ready { color: rgba(0, 255, 170, 0.6); }
 .status-busy  { color: rgba(255, 180, 0, 0.7); }
+
+
+@media (max-width: 768px) {
+  .chat-textarea {
+    max-height: 90px;
+  }
+
+  .slash-palette {
+    max-height: 150px;
+  }
+
+  .input-section {
+    padding: 10px 12px 8px;
+  }
+}

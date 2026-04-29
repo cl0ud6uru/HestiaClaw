@@ -1014,6 +1014,10 @@ export default function App() {
       <div className="bg-grid" aria-hidden />
       <div className="bg-glow" aria-hidden />
 
+      <div
+        className={`sidebar-scrim${sidebarOpen ? ' sidebar-scrim--visible' : ''}`}
+        onClick={() => setSidebarOpen(false)}
+      />
       <Sidebar
         conversations={conversations}
         activeId={activeId}

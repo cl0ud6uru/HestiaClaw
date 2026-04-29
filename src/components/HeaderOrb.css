@@ -27,3 +27,9 @@
 .header-orb--pulse {
   animation: orb-pulse 1.5s ease-out forwards;
 }
+
+@media (max-width: 768px) {
+  .header-orb {
+    display: none;
+  }
+}

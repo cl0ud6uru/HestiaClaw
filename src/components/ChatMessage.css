@@ -249,3 +249,13 @@
   box-shadow: 0 0 6px #00d4ff;
   animation: blink-cursor 0.8s step-end infinite;
 }
+
+@media (max-width: 768px) {
+  .msg-row {
+    max-width: 100%;
+  }
+
+  .msg-bubble {
+    word-break: break-word;
+  }
+}

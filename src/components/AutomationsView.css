@@ -707,3 +707,47 @@
   background: rgba(0, 212, 255, 0.2);
   border-radius: 2px;
 }
+
+@media (max-width: 768px) {
+  .auto-panel {
+    margin: 6px;
+  }
+
+  /* Stack list above detail instead of side-by-side */
+  .auto-body {
+    flex-direction: column;
+  }
+
+  .auto-list-pane {
+    width: 100%;
+    max-height: 38vh;
+    border-right: none;
+    border-bottom: 1px solid rgba(0, 212, 255, 0.15);
+    flex-shrink: 0;
+  }
+
+  /* Detail pane fills remaining space and scrolls */
+  .auto-detail-pane {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+  }
+
+  .auto-editor {
+    padding: 14px 16px;
+  }
+
+  .auto-history {
+    max-height: none;
+  }
+
+  /* History grid: drop tools column on small screens */
+  .auto-history-header,
+  .auto-history-row {
+    grid-template-columns: 1fr 70px 90px;
+  }
+  .auto-history-header > *:last-child,
+  .auto-history-row > *:last-child {
+    display: none;
+  }
+}
