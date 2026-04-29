@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import AccountPanel from './components/AccountPanel'
 import AgentPanel from './components/AgentPanel'
+import MemoryPanel from './components/MemoryPanel'
 import ChatBackground from './components/ChatBackground'
 import ChatInput from './components/ChatInput'
 import ChatMessage from './components/ChatMessage'
@@ -68,6 +69,7 @@ export default function App() {
   const [activeToolName, setActiveToolName] = useState(null)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [agentPanelOpen, setAgentPanelOpen] = useState(false)
+  const [memoryPanelOpen, setMemoryPanelOpen] = useState(false)
   const [showGraph, setShowGraph] = useState(false)
   const [showAutomations, setShowAutomations] = useState(false)
   const [memoryPulseAt, setMemoryPulseAt] = useState(null)
@@ -1051,6 +1053,7 @@ export default function App() {
               className={`header-account-btn ${settingsOpen ? 'header-account-btn--active' : ''}`}
               onClick={() => {
                 setAgentPanelOpen(false)
+                setMemoryPanelOpen(false)
                 setSettingsOpen(open => !open)
               }}
             >
@@ -1060,10 +1063,21 @@ export default function App() {
               className={`header-account-btn ${agentPanelOpen ? 'header-account-btn--active' : ''}`}
               onClick={() => {
                 setSettingsOpen(false)
+                setMemoryPanelOpen(false)
                 setAgentPanelOpen(open => !open)
               }}
             >
               AGENT HARNESS
+            </button>
+            <button
+              className={`header-account-btn ${memoryPanelOpen ? 'header-account-btn--active' : ''}`}
+              onClick={() => {
+                setSettingsOpen(false)
+                setAgentPanelOpen(false)
+                setMemoryPanelOpen(open => !open)
+              }}
+            >
+              MEMORY
             </button>
             <button
               className={`header-account-btn ${showAutomations ? 'header-account-btn--active' : ''}`}
@@ -1105,6 +1119,9 @@ export default function App() {
               onForkConversation={forkActiveAgentConversation}
               configVersion={agentConfigVersion}
             />
+          )}
+          {memoryPanelOpen && (
+            <MemoryPanel onClose={() => setMemoryPanelOpen(false)} />
           )}
         </header>
 

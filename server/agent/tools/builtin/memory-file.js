@@ -1,7 +1,8 @@
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs'
 import { join } from 'node:path'
+import { writeMemory } from '../../memory-history-store.js'
 
-export function registerMemoryTools(registry, memoryPath) {
+export function registerMemoryTools(registry, memoryPath, historyPath = null) {
   registry.register(
     'read_memory',
     'Read the current contents of the pinned MEMORY.md file — your confirmed high-confidence long-term memories.',
@@ -27,7 +28,7 @@ export function registerMemoryTools(registry, memoryPath) {
       required: ['content'],
     },
     async ({ content }) => {
-      writeFileSync(memoryPath, String(content), 'utf8')
+      await writeMemory(memoryPath, historyPath, { newContent: String(content), source: 'agent' })
       return 'MEMORY.md updated successfully.'
     },
     { source: 'builtin', kind: 'write', risk: 'medium', requiresApproval: true },

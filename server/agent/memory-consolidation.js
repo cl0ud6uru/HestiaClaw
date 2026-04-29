@@ -1,4 +1,4 @@
-import { writeFileSync } from 'node:fs'
+import { writeMemory } from './memory-history-store.js'
 
 const CONSOLIDATION_PROMPT = `You are a memory curator for an AI assistant called Hestia.
 You will receive a list of Graphiti memory episodes from two groups: hestia_user (personal facts) and hestia_home (home/device facts).
@@ -29,7 +29,7 @@ Return ONLY valid JSON (no markdown fences, no explanation):
   "memory_md_content": "# Hestia Memory\\n\\n..."
 }`
 
-export async function runConsolidation({ provider, registry, memoryPath }) {
+export async function runConsolidation({ provider, registry, memoryPath, historyPath = null }) {
   console.log('[consolidation] Starting memory consolidation...')
 
   // Fetch recent episodes from both groups
@@ -98,7 +98,11 @@ export async function runConsolidation({ provider, registry, memoryPath }) {
   let memoryUpdated = false
   if (typeof plan.memory_md_content === 'string' && plan.memory_md_content.trim()) {
     try {
-      writeFileSync(memoryPath, plan.memory_md_content, 'utf8')
+      await writeMemory(memoryPath, historyPath, {
+        newContent: plan.memory_md_content,
+        source: 'consolidation',
+        episodesDeleted: toDelete,
+      })
       memoryUpdated = true
     } catch (err) {
       console.error('[consolidation] Failed to write MEMORY.md:', err.message)
