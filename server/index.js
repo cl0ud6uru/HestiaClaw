@@ -56,6 +56,7 @@ const NEO4J_PASSWORD = process.env.NEO4J_PASSWORD || ''
 
 const AGENT_CONFIG_PATH = path.resolve(ROOT_DIR, 'agent.config.json')
 const MEMORY_PATH = path.resolve(DATA_DIR, 'MEMORY.md')
+const MEMORY_HISTORY_PATH = path.resolve(DATA_DIR, 'memory-history.json')
 const SOUL_PATH = path.resolve(DATA_DIR, 'SOUL.md')
 const NOTES_DIR = path.resolve(DATA_DIR, 'notes')
 const SKILLS_DIR = path.join(ROOT_DIR, 'skills')
@@ -662,7 +663,7 @@ if (agentConfig) {
   const agentSession = new AgentSession(db)
   const registry = new ToolRegistry()
   registerWebSearch(registry)
-  registerMemoryTools(registry, MEMORY_PATH)
+  registerMemoryTools(registry, MEMORY_PATH, MEMORY_HISTORY_PATH)
   registerDailyNoteTool(registry, NOTES_DIR)
   registerScheduleFollowup(registry)
   registerSkillsManagerTools(registry, SKILLS_DIR)
@@ -691,7 +692,7 @@ if (agentConfig) {
       ? null
       : new ApprovalManager({ timeoutMs: Number(agentConfig.harness?.approvalTimeoutMs) || 60000 })
     const events = new AgentEventBus()
-    const consolidate = () => runConsolidation({ provider, registry, memoryPath: MEMORY_PATH })
+    const consolidate = () => runConsolidation({ provider, registry, memoryPath: MEMORY_PATH, historyPath: MEMORY_HISTORY_PATH })
     const agentRouter = createAgentRouter({
       provider,
       session: agentSession,
@@ -704,6 +705,7 @@ if (agentConfig) {
       skillsDir: SKILLS_DIR,
       configPath: AGENT_CONFIG_PATH,
       memoryPath: MEMORY_PATH,
+      historyPath: MEMORY_HISTORY_PATH,
       soulPath: SOUL_PATH,
       notesDir: NOTES_DIR,
       onConsolidate: consolidate,

@@ -5,8 +5,9 @@ import { join, resolve, relative, isAbsolute } from 'node:path'
 import { runAgentLoop, readDailyNotes } from './loop.js'
 import { createProvider } from './providers/index.js'
 import { loadSkills, parseSkillManifest } from './skills.js'
+import { loadHistory, appendHistory } from './memory-history-store.js'
 
-export function createAgentRouter({ provider, session, registry, systemPrompt, mcpManager, approvals, events, settings = {}, skillsDir = null, configPath = null, memoryPath = null, soulPath = null, notesDir = null, onConsolidate = null }) {
+export function createAgentRouter({ provider, session, registry, systemPrompt, mcpManager, approvals, events, settings = {}, skillsDir = null, configPath = null, memoryPath = null, historyPath = null, soulPath = null, notesDir = null, onConsolidate = null }) {
   const getSkills = skillsDir ? () => loadSkills(skillsDir) : () => Promise.resolve([])
   const router = Router()
   let currentProvider = provider
@@ -430,6 +431,44 @@ export function createAgentRouter({ provider, session, registry, systemPrompt, m
     } catch (err) {
       console.error('[agent] Consolidation error:', err.message)
       return res.status(500).json({ error: 'Consolidation failed.', detail: err.message })
+    }
+  })
+
+  router.get('/memory', (req, res) => {
+    if (!memoryPath) return res.status(503).json({ error: 'Memory not configured.' })
+    let current = ''
+    try { current = readFileSync(memoryPath, 'utf8') } catch { /* file may not exist */ }
+    const { history } = historyPath ? loadHistory(historyPath) : { history: [] }
+    return res.json({ current, history })
+  })
+
+  router.patch('/memory', (req, res) => {
+    if (!memoryPath) return res.status(503).json({ error: 'Memory not configured.' })
+    const content = String(req.body?.content ?? '')
+    let previousContent = ''
+    try { previousContent = readFileSync(memoryPath, 'utf8') } catch { /* file may not exist */ }
+    try {
+      writeFileSync(memoryPath, content, 'utf8')
+      if (historyPath) appendHistory(historyPath, { source: 'user', previousContent, newContent: content })
+      return res.json({ ok: true })
+    } catch (err) {
+      return res.status(500).json({ error: 'Failed to write MEMORY.md.', detail: err.message })
+    }
+  })
+
+  router.post('/memory/restore/:id', (req, res) => {
+    if (!memoryPath || !historyPath) return res.status(503).json({ error: 'Memory not configured.' })
+    const { history } = loadHistory(historyPath)
+    const entry = history.find(e => e.id === req.params.id)
+    if (!entry) return res.status(404).json({ error: 'History entry not found.' })
+    let currentContent = ''
+    try { currentContent = readFileSync(memoryPath, 'utf8') } catch { /* file may not exist */ }
+    try {
+      writeFileSync(memoryPath, entry.previousContent, 'utf8')
+      appendHistory(historyPath, { source: 'restore', previousContent: currentContent, newContent: entry.previousContent })
+      return res.json({ ok: true, restoredContent: entry.previousContent })
+    } catch (err) {
+      return res.status(500).json({ error: 'Failed to restore MEMORY.md.', detail: err.message })
     }
   })
 
