@@ -177,6 +177,13 @@ export function createAgentRouter({ provider, session, registry, systemPrompt, m
     res.json({ conversations: session.listConversations(Number(req.query.limit) || 50) })
   })
 
+  router.delete('/conversations/:id', (req, res) => {
+    const id = String(req.params.id || '').trim()
+    if (!id) return res.status(400).json({ error: 'conversation id required' })
+    session.deleteConversation(id)
+    res.json({ ok: true })
+  })
+
   router.get('/conversations/:id/messages', (req, res) => {
     const conversationId = String(req.params.id || '').trim()
     if (!conversationId) return res.status(400).json({ error: 'conversation_id is required.' })

@@ -462,6 +462,7 @@ export default function App() {
   }
 
   const deleteConversation = (id) => {
+    fetch(`/api/agent/conversations/${id}`, { method: 'DELETE' }).catch(() => {})
     setConversations(prev => {
       const next = prev.filter(c => c.id !== id)
       if (next.length === 0) {
