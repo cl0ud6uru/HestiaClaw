@@ -269,6 +269,23 @@ export class AgentSession {
     this._forkConversationTx(sourceConversationId, targetConversationId)
   }
 
+  deleteConversation(id) {
+    const runIds = this._db.prepare(
+      'SELECT id FROM agent_runs WHERE conversation_id = ?'
+    ).all(id).map(r => r.id)
+
+    this._db.transaction(() => {
+      if (runIds.length) {
+        const ph = runIds.map(() => '?').join(',')
+        this._db.prepare(`DELETE FROM agent_run_events WHERE run_id IN (${ph})`).run(...runIds)
+        this._db.prepare(`DELETE FROM agent_tool_calls WHERE run_id IN (${ph})`).run(...runIds)
+      }
+      this._db.prepare('DELETE FROM agent_runs WHERE conversation_id = ?').run(id)
+      this._db.prepare('DELETE FROM agent_messages WHERE conversation_id = ?').run(id)
+      this._db.prepare('DELETE FROM agent_conversation_summaries WHERE conversation_id = ?').run(id)
+    })()
+  }
+
   _summarizeMessages(rows) {
     const lines = []
     for (const row of rows) {
