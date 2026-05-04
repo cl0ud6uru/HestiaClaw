@@ -44,6 +44,20 @@ Under the hood: a React + Vite frontend, an Express agent harness, real-time tok
 
 The easiest way to run HestiaClaw is directly inside Home Assistant as an add-on. No separate server required — it runs alongside HA and connects automatically.
 
+### Add-ons in this repository
+
+Adding the repository to HA exposes three add-ons:
+
+| Add-on | Purpose | Required? |
+|---|---|---|
+| **HestiaClaw** | The main AI assistant — chat UI, agent harness, voice, skills | ✅ Always |
+| **HestiaClaw Neo4j** | Neo4j Community Edition with GDS plugin | Optional — only needed for the knowledge graph and Graphiti memory |
+| **HestiaClaw Graphiti** | Graphiti temporal knowledge graph MCP server | Optional — enables long-term memory; requires Neo4j |
+
+> **ha-mcp is bundled inside HestiaClaw** — it runs as an embedded subprocess and doesn't appear as a separate add-on. If you have a standalone ha-mcp add-on installed, HestiaClaw won't use it; it connects to its own internal copy instead. You can uninstall the standalone one to avoid running it twice.
+
+If you only want chat + Home Assistant control, install **HestiaClaw** alone. Add the other two if you want persistent memory and the knowledge graph view.
+
 ### 1. Add the repository
 
 In Home Assistant → **Settings → Add-ons → Add-on Store** → overflow menu (⋮) → **Repositories**, add:
