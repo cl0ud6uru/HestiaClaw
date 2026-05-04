@@ -56,8 +56,18 @@ HOMEASSISTANT_URL="${HA_URL}" \
   LOG_LEVEL=INFO \
   /usr/local/bin/ha-mcp-web &
 
-# Wait briefly for ha-mcp to be ready
-sleep 2
+# Wait for ha-mcp to accept connections (any HTTP response means it's up)
+echo "[init] Waiting for ha-mcp to start..."
+i=0
+until curl -s -o /dev/null http://localhost:8086/mcp || [ "$i" -ge 30 ]; do
+  i=$((i+1))
+  sleep 1
+done
+if [ "$i" -ge 30 ]; then
+  echo "[init] Warning: ha-mcp did not respond within 30s, starting anyway"
+else
+  echo "[init] ha-mcp ready after ${i}s"
+fi
 
 # Build agent.config.json from options and write to /data (persisted)
 SYSTEM_PROMPT=$(opt system_prompt)
