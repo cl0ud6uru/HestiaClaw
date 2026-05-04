@@ -25,6 +25,6 @@ export async function generateSummary(provider, messages) {
     )
   } catch {
     // Fallback to mechanical truncation if LLM call fails
-    return transcript.slice(0, 1200)
+    return transcript.slice(-1200)
   }
 }

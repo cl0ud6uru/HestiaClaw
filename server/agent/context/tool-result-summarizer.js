@@ -8,6 +8,7 @@ const CAPS = {
 
 export function summarizeToolResult(name, result) {
   const text = String(result ?? '')
+  if (name === 'invoke_skill') return text
   const cap = pickCap(name, text)
   if (text.length <= cap) return text
 
