@@ -1,0 +1,60 @@
+name: HestiaClaw
+version: "1.0.0"
+slug: hestiaclaw
+description: AI home intelligence assistant with native Home Assistant integration
+url: https://github.com/cl0ud6uru/hestiaclaw
+arch:
+  - amd64
+  - aarch64
+
+startup: application
+boot: auto
+init: false
+timeout: 90
+
+host_network: true
+homeassistant_api: true
+
+ingress: true
+ingress_port: 3001
+ingress_stream: true
+panel_icon: mdi:robot
+panel_title: HestiaClaw
+panel_admin: false
+
+map:
+  - data:rw
+
+options:
+  provider: "anthropic"
+  model: "claude-opus-4-7"
+  anthropic_api_key: ""
+  openai_api_key: ""
+  system_prompt: ""
+  elevenlabs_api_key: ""
+  elevenlabs_default_voice_id: ""
+  graphiti_url: ""
+  neo4j_uri: ""
+  neo4j_user: "neo4j"
+  neo4j_password: ""
+  searxng_url: ""
+  session_secret: ""
+  admin_username: "admin"
+  admin_password: ""
+
+schema:
+  provider: list(anthropic|openai)
+  model: str
+  anthropic_api_key: str
+  openai_api_key: str
+  system_prompt: str
+  elevenlabs_api_key: str
+  elevenlabs_default_voice_id: str
+  graphiti_url: str
+  neo4j_uri: str
+  neo4j_user: str
+  neo4j_password: str
+  searxng_url: str
+  session_secret: password
+  admin_username: str
+  admin_password: password
