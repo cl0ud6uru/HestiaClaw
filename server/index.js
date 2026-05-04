@@ -648,6 +648,77 @@ app.post('/api/graph/recompute', requireSameOrigin, requireAuth, async (req, res
   }
 })
 
+async function fetchOpenAiCostSummary() {
+  const apiKey = process.env.OPENAI_API_KEY || ''
+  if (!apiKey) {
+    return { available: false, note: 'OPENAI_API_KEY is not configured on this server.' }
+  }
+
+  const nowSec = Math.floor(Date.now() / 1000)
+  const startSec = nowSec - 30 * 24 * 60 * 60
+  const url = `https://api.openai.com/v1/organization/costs?start_time=${startSec}&end_time=${nowSec}&bucket_width=1d`
+
+  try {
+    const response = await fetch(url, {
+      headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+    })
+    if (!response.ok) {
+      const text = await response.text()
+      return { available: false, note: `OpenAI costs API unavailable (${response.status}): ${text.slice(0, 200)}` }
+    }
+    const payload = await response.json()
+    const buckets = Array.isArray(payload?.data) ? payload.data : []
+    let costUsd30d = 0
+    for (const bucket of buckets) {
+      for (const result of (Array.isArray(bucket?.results) ? bucket.results : [])) {
+        const v = Number(result?.amount?.value)
+        if (Number.isFinite(v)) costUsd30d += v
+      }
+    }
+    return { available: true, costUsd30d, note: 'Pulled from OpenAI organization costs API (last 30 days).' }
+  } catch (error) {
+    return { available: false, note: `OpenAI costs API error: ${error instanceof Error ? error.message : String(error)}` }
+  }
+}
+
+app.get('/api/usage/summary', requireAuth, async (req, res) => {
+  const now = Date.now()
+  const since7d = now - 7 * 24 * 60 * 60 * 1000
+
+  const runs7d      = db.prepare('SELECT COUNT(*) AS c FROM agent_runs WHERE started_at >= ?').get(since7d).c
+  const toolCalls7d = db.prepare('SELECT COUNT(*) AS c FROM agent_tool_calls WHERE started_at >= ?').get(since7d).c
+  const convCount   = db.prepare('SELECT COUNT(DISTINCT conversation_id) AS c FROM agent_runs').get().c
+  const latest      = db.prepare('SELECT started_at AS ts, provider, model, status FROM agent_runs ORDER BY started_at DESC LIMIT 1').get()
+
+  const statusRows  = db.prepare('SELECT status, COUNT(*) AS c FROM agent_runs WHERE started_at >= ? GROUP BY status').all(since7d)
+  const statusMap   = Object.fromEntries(statusRows.map(r => [r.status, r.c]))
+
+  const topTools    = db.prepare(
+    'SELECT name, COUNT(*) AS c FROM agent_tool_calls WHERE started_at >= ? GROUP BY name ORDER BY c DESC LIMIT 8'
+  ).all(since7d)
+
+  const dayBuckets  = db.prepare(
+    'SELECT (started_at / 86400000) AS day, COUNT(*) AS c FROM agent_runs WHERE started_at >= ? GROUP BY day ORDER BY day ASC'
+  ).all(since7d)
+
+  const openai = await fetchOpenAiCostSummary()
+
+  return res.json({
+    runs7d,
+    toolCalls7d,
+    conversationCount: convCount,
+    lastRunAt: latest?.ts || null,
+    provider: {
+      type:  agentConfig?.provider?.type  || latest?.provider || null,
+      model: agentConfig?.provider?.model || latest?.model    || null,
+    },
+    statusBreakdown: statusMap,
+    topTools: topTools.map(r => ({ name: r.name, count: r.c })),
+    dailyActivity: dayBuckets.map(r => ({ day: r.day, count: r.c })),
+    openai,
+  })
+})
+
 const distPath = path.resolve(ROOT_DIR, 'dist')
 if (fs.existsSync(distPath)) {
   app.use(express.static(distPath))
