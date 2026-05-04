@@ -29,7 +29,13 @@ export SEARXNG_URL=$(opt searxng_url)
 SESSION_SECRET=$(opt session_secret)
 export SESSION_SECRET=${SESSION_SECRET:-$(cat /proc/sys/kernel/random/uuid 2>/dev/null || date +%s%N)}
 export BOOTSTRAP_ADMIN_USERNAME=$(opt admin_username)
-export BOOTSTRAP_ADMIN_PASSWORD=$(opt admin_password)
+BOOTSTRAP_ADMIN_PASSWORD=$(opt admin_password)
+if [ -z "$BOOTSTRAP_ADMIN_PASSWORD" ]; then
+  BOOTSTRAP_ADMIN_PASSWORD=$(cat /proc/sys/kernel/random/uuid 2>/dev/null | tr -d '-' | cut -c1-16 || date +%s | cut -c1-16)
+  echo "[auth] No admin_password set — generated temporary password: ${BOOTSTRAP_ADMIN_PASSWORD}"
+  echo "[auth] Set admin_password in the add-on configuration to use a fixed password."
+fi
+export BOOTSTRAP_ADMIN_PASSWORD
 
 # Home Assistant connection — provided automatically by Supervisor
 export HA_URL="http://homeassistant:8123"
