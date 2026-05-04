@@ -127,6 +127,19 @@ export class OpenAIProvider extends Provider {
     }
   }
 
+  async complete(messages, options = {}) {
+    const input = OpenAIProvider._toResponsesInput(messages)
+    const res = await this._client.responses.create({
+      model: options.model || this._model,
+      input,
+      ...(options.system ? { instructions: options.system } : {}),
+      ...(options.maxTokens ? { max_output_tokens: options.maxTokens } : {}),
+    })
+    return res.output?.filter(i => i.type === 'message').flatMap(i =>
+      i.content?.filter(c => c.type === 'output_text').map(c => c.text) || []
+    ).join('') || ''
+  }
+
   // Returns an array of Responses API input items representing this assistant turn.
   // reasoningItems must precede function_call items in the array — API requirement.
   static buildAssistantTurn(text, toolCalls, reasoningItems = []) {

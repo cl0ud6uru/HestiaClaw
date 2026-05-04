@@ -23,6 +23,8 @@ import { registerWebSearch } from './agent/tools/builtin/web-search.js'
 import { registerMemoryTools, registerDailyNoteTool } from './agent/tools/builtin/memory-file.js'
 import { registerScheduleFollowup } from './agent/tools/builtin/schedule-followup.js'
 import { registerSkillsManagerTools } from './agent/tools/builtin/skills-manager.js'
+import { registerInvokeSkill } from './agent/tools/builtin/invoke-skill.js'
+import { registerHaFacade } from './agent/tools/builtin/home-assistant-facade.js'
 import { McpClientManager } from './agent/mcp/client.js'
 import { runConsolidation } from './agent/memory-consolidation.js'
 import { initDb as initAutomationsDb } from './agent/automations/db.js'
@@ -667,6 +669,8 @@ if (agentConfig) {
   registerDailyNoteTool(registry, NOTES_DIR)
   registerScheduleFollowup(registry)
   registerSkillsManagerTools(registry, SKILLS_DIR)
+  registerInvokeSkill(registry, SKILLS_DIR)
+  registerHaFacade(registry)
 
   mcpManager = new McpClientManager(registry)
   await mcpManager.init(agentConfig.mcpServers || {})

@@ -16,6 +16,7 @@ export class ToolRegistry {
       requiresApproval: metadata.requiresApproval === true,
       timeoutMs: Number(metadata.timeoutMs) || null,
       injectConversationId: metadata.injectConversationId === true,
+      internalOnly: metadata.internalOnly === true,
     })
   }
 
@@ -36,11 +37,12 @@ export class ToolRegistry {
       risk: tool.risk,
       requiresApproval: tool.requiresApproval,
       timeoutMs: tool.timeoutMs,
+      internalOnly: tool.internalOnly,
     }
   }
 
   getDefinitions(allowedTools = null) {
-    const tools = Array.from(this._tools.values())
+    const tools = Array.from(this._tools.values()).filter(t => !t.internalOnly)
     const filtered = allowedTools === null
       ? tools
       : tools.filter(t => allowedTools.some(p =>
@@ -61,6 +63,7 @@ export class ToolRegistry {
       risk,
       requiresApproval,
       timeoutMs,
+      internalOnly,
     }) => ({
       name,
       description,
@@ -71,6 +74,7 @@ export class ToolRegistry {
       risk,
       requiresApproval,
       timeoutMs,
+      internalOnly,
     }))
   }
 

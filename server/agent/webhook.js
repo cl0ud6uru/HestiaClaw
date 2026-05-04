@@ -3,6 +3,40 @@ import { Router } from 'express'
 import { runAgentLoop, readDailyNotes } from './loop.js'
 import { loadSkills } from './skills.js'
 
+function scoreEntity(query, entity) {
+  const q = query.toLowerCase()
+  let score = 0
+  for (const field of [entity.entity_id, entity.name, entity.area_name, entity.state]) {
+    const text = String(field || '').toLowerCase()
+    for (const token of q.split(/\s+/)) {
+      if (token.length >= 2 && text.includes(token)) score++
+    }
+  }
+  return score
+}
+
+function selectRelevantEntities(query, entities, limit = 10) {
+  return entities
+    .map(e => ({ e, score: scoreEntity(query, e) }))
+    .filter(x => x.score > 0)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, limit)
+    .map(x => x.e)
+}
+
+function entityInventorySummary(entities) {
+  const byDomain = {}
+  const areas = new Set()
+  for (const e of entities) {
+    const domain = e.entity_id?.split('.')[0] || 'unknown'
+    byDomain[domain] = (byDomain[domain] || 0) + 1
+    if (e.area_name) areas.add(e.area_name)
+  }
+  const domainStr = Object.entries(byDomain).map(([d, n]) => `${d}(${n})`).join(', ')
+  const areaStr = [...areas].slice(0, 8).join(', ')
+  return `Home Assistant inventory: ${entities.length} entities\nAreas: ${areaStr || 'none'}\nDomains: ${domainStr}\nUse ha_search_entities or ask by name for specific devices.`
+}
+
 export function createWebhookRouter({ provider, session, registry, systemPrompt, events, settings = {}, skillsDir = null, memoryPath = null, soulPath = null, notesDir = null }) {
   const getWebhookSkills = skillsDir
     ? async () => (await loadSkills(skillsDir)).filter(s => s.webhookSafe)
@@ -67,17 +101,22 @@ export function createWebhookRouter({ provider, session, registry, systemPrompt,
     }
     const fullSystemPrompt = soulContent ? `${soulContent}\n\n${systemPrompt}` : systemPrompt
 
-    // Parse exposed_entities from HA — gives agent immediate entity awareness
+    // Parse exposed_entities from HA — inject only relevant entities to avoid prompt bloat
     let entityContext = ''
     if (req.body?.exposed_entities) {
       try {
         const raw = req.body.exposed_entities
         const entities = typeof raw === 'string' ? JSON.parse(raw) : raw
         if (Array.isArray(entities) && entities.length > 0) {
-          const lines = entities.map(e =>
-            `- ${e.entity_id} (${e.name})${e.area_name ? ` — area: ${e.area_name}` : ''} — state: ${e.state}`
-          )
-          entityContext = `Available Home Assistant entities:\n${lines.join('\n')}`
+          const relevant = selectRelevantEntities(query, entities, 10)
+          if (relevant.length > 0) {
+            const lines = relevant.map(e =>
+              `- ${e.entity_id} (${e.name})${e.area_name ? ` — area: ${e.area_name}` : ''} — state: ${e.state}`
+            )
+            entityContext = `Relevant Home Assistant entities:\n${lines.join('\n')}`
+          } else {
+            entityContext = entityInventorySummary(entities)
+          }
         }
       } catch { /* ignore malformed JSON */ }
     }

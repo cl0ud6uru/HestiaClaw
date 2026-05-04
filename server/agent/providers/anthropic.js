@@ -91,6 +91,16 @@ export class AnthropicProvider extends Provider {
     }
   }
 
+  async complete(messages, options = {}) {
+    const res = await this._client.messages.create({
+      model: options.model || this._model,
+      max_tokens: options.maxTokens || 512,
+      messages,
+      ...(options.system ? { system: options.system } : {}),
+    })
+    return res.content?.map(b => b.text || '').join('') || ''
+  }
+
   // Content parts may include thinking blocks — must be passed in order (thinking → text → tool_use)
   static buildAssistantTurn(contentParts) {
     return { role: 'assistant', content: contentParts }
