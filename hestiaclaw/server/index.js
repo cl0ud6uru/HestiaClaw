@@ -234,7 +234,7 @@ app.use(session({
   rolling: true,
   cookie: {
     httpOnly: true,
-    secure: IS_PROD,
+    secure: 'auto',
     sameSite: 'lax',
     maxAge: 1000 * 60 * 60 * 24 * 7,
   },

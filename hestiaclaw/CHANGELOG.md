@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.7
+
+- Fix session cookie on local network — use `secure: auto` so cookies work over HTTP (local) and HTTPS (external/Nabu Casa) without manual configuration
+
 ## 1.0.6
 
 - Add `ha_token` config option — supply a long-lived HA access token directly instead of relying on the Supervisor token; fixes "invalid authentication token" errors when calling HA tools
