@@ -54,9 +54,9 @@ services:
     environment:
       NEO4J_URI: bolt://neo4j:7687
     volumes:
-      - ./agent.config.json:/app/agent.config.json
+      - ./hestiaclaw/agent.config.json:/app/agent.config.json
       - hestia_data:/app/data
-      - ./skills:/app/skills:ro
+      - ./hestiaclaw/skills:/app/skills:ro
     expose:
       - "3001"
     networks:

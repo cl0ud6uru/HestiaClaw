@@ -4,9 +4,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Commands
 
+All npm commands run from the `hestiaclaw/` subdirectory (that's where `package.json` lives):
+
 ```bash
+cd hestiaclaw
 npm run dev      # Start dev server (usually http://localhost:5173 or 5174+ if port taken)
-npm run build    # Production build → dist/
+npm run build    # Production build → hestiaclaw/dist/
 npm run preview  # Serve the production build locally
 npm run lint     # ESLint (react-hooks + react-refresh rules, no warnings tolerated)
 ```
@@ -15,7 +18,7 @@ No test suite exists yet.
 
 ## Docker setup
 
-Two compose files handle different workflows:
+Two compose files handle different workflows (run from repo root):
 
 ```bash
 # Production — runs Neo4j + Graphiti + Hestia all in Docker
@@ -23,7 +26,7 @@ docker compose up -d
 
 # Development — runs Neo4j + Graphiti in Docker, app runs natively with hot reload
 docker compose -f docker-compose.dev.yml up -d
-npm run dev
+cd hestiaclaw && npm run dev
 ```
 
 **Services:**
