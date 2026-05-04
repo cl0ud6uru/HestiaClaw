@@ -1,0 +1,29 @@
+.usage-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(2, 10, 20, 0.75);
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+.usage-panel {
+  width: min(900px, 100%);
+  border: 1px solid rgba(93, 207, 255, 0.35);
+  border-radius: 16px;
+  background: rgba(3, 16, 28, 0.95);
+  box-shadow: 0 0 22px rgba(0, 212, 255, 0.25);
+  padding: 20px;
+}
+
+.usage-header { display:flex; justify-content:space-between; gap:12px; align-items:center; }
+.usage-actions { display:flex; gap:8px; }
+.usage-btn { background:#071a2b; color:#c7f2ff; border:1px solid #2e8ea5; padding:8px 12px; border-radius:8px; }
+.usage-grid { display:grid; grid-template-columns: repeat(2, minmax(220px, 1fr)); gap:12px; margin-top:14px; }
+.usage-card { border:1px solid rgba(93,207,255,0.25); border-radius:10px; padding:10px; display:flex; flex-direction:column; gap:6px; }
+.usage-card span { color:#8dc5dc; font-size:12px; text-transform:uppercase; letter-spacing:.06em; }
+.usage-provider { margin-top:16px; border-top:1px solid rgba(93,207,255,0.2); padding-top:12px; }
+.usage-muted { color:#8aa8b9; }
+.usage-error { color:#ff9fa5; }

@@ -7,6 +7,7 @@ import ChatInput from './components/ChatInput'
 import ChatMessage from './components/ChatMessage'
 import AutomationsView from './components/AutomationsView'
 import GraphView from './components/GraphView'
+import UsageDashboard from './components/UsageDashboard'
 import HeaderOrb from './components/HeaderOrb'
 import LoginScreen from './components/LoginScreen'
 import Sidebar from './components/Sidebar'
@@ -71,6 +72,7 @@ export default function App() {
   const [agentPanelOpen, setAgentPanelOpen] = useState(false)
   const [memoryPanelOpen, setMemoryPanelOpen] = useState(false)
   const [showGraph, setShowGraph] = useState(false)
+  const [showUsage, setShowUsage] = useState(false)
   const [showAutomations, setShowAutomations] = useState(false)
   const [memoryPulseAt, setMemoryPulseAt] = useState(null)
   const [agentConfigVersion, setAgentConfigVersion] = useState(0)
@@ -189,7 +191,7 @@ export default function App() {
     if (!authUser) return
     const interval = setInterval(syncServerConversations, 30000)
     return () => clearInterval(interval)
-  }, [authUser]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [authUser])
 
   // Poll active conversation every 15s for new messages posted by scheduled follow-ups.
   // Uses non-greeting message count as the "server-side count" baseline — the greeting (id:0)
@@ -219,7 +221,7 @@ export default function App() {
         .catch(() => {})
     }, 15000)
     return () => clearInterval(interval)
-  }, [authUser, activeId, agentMode]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [authUser, activeId, agentMode])
 
   useEffect(() => {
     if (!authUser) return
@@ -1087,6 +1089,12 @@ export default function App() {
               AUTOMATIONS
             </button>
             <button
+              className={`header-account-btn ${showUsage ? 'header-account-btn--active' : ''}`}
+              onClick={() => setShowUsage(open => !open)}
+            >
+              USAGE DASHBOARD
+            </button>
+            <button
               className={`header-account-btn ${showGraph ? 'header-account-btn--active' : ''}`}
               onClick={() => setShowGraph(open => !open)}
             >
@@ -1150,6 +1158,7 @@ export default function App() {
       </div>
 
       {showAutomations && <AutomationsView onClose={() => setShowAutomations(false)} />}
+      {showUsage && <UsageDashboard onClose={() => setShowUsage(false)} />}
       {showGraph && <GraphView onClose={() => setShowGraph(false)} />}
     </div>
   )

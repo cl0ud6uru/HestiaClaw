@@ -199,6 +199,49 @@ function requireVoiceConfig(res) {
   return true
 }
 
+
+function parseOpenAiCostBuckets(payload) {
+  const buckets = Array.isArray(payload?.data) ? payload.data : []
+  let totalUsd = 0
+  for (const bucket of buckets) {
+    const results = Array.isArray(bucket?.results) ? bucket.results : []
+    for (const result of results) {
+      const cents = Number(result?.amount?.value)
+      if (Number.isFinite(cents)) totalUsd += cents / 100
+    }
+  }
+  return totalUsd
+}
+
+async function fetchOpenAiCostSummary() {
+  const apiKey = process.env.OPENAI_API_KEY || ''
+  if (!apiKey) {
+    return { available: false, note: 'OPENAI_API_KEY is not configured on this server.' }
+  }
+
+  const nowSec = Math.floor(Date.now() / 1000)
+  const startSec = nowSec - (30 * 24 * 60 * 60)
+  const url = `https://api.openai.com/v1/organization/costs?start_time=${startSec}&end_time=${nowSec}&bucket_width=1d`
+
+  try {
+    const response = await fetch(url, {
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+    })
+    if (!response.ok) {
+      const text = await response.text()
+      return { available: false, note: `OpenAI costs API unavailable (${response.status}): ${text.slice(0, 180)}` }
+    }
+
+    const payload = await response.json()
+    const costUsd30d = parseOpenAiCostBuckets(payload)
+    return { available: true, costUsd30d, note: 'Pulled from OpenAI organization costs API for last 30 days.' }
+  } catch (error) {
+    return { available: false, note: `OpenAI costs API error: ${error instanceof Error ? error.message : String(error)}` }
+  }
+}
 const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   limit: 7,
@@ -363,6 +406,30 @@ app.post('/api/chat/send', requireSameOrigin, requireAuth, async (req, res) => {
       detail: error instanceof Error ? error.message : String(error),
     })
   }
+})
+
+
+app.get('/api/usage/summary', requireAuth, async (req, res) => {
+  const now = Date.now()
+  const since = now - (7 * 24 * 60 * 60 * 1000)
+
+  const runs7d = db.prepare('SELECT COUNT(*) AS count FROM agent_runs WHERE started_at >= ?').get(since).count
+  const toolCalls7d = db.prepare('SELECT COUNT(*) AS count FROM agent_tool_calls WHERE started_at >= ?').get(since).count
+  const conversationCount = db.prepare('SELECT COUNT(DISTINCT conversation_id) AS count FROM agent_runs').get().count
+  const latest = db.prepare('SELECT started_at AS ts, provider, model FROM agent_runs ORDER BY started_at DESC LIMIT 1').get()
+  const openai = await fetchOpenAiCostSummary()
+
+  return res.json({
+    runs7d,
+    toolCalls7d,
+    conversationCount,
+    lastRunAt: latest?.ts || null,
+    provider: {
+      type: agentConfig?.provider?.type || latest?.provider || 'n8n',
+      model: agentConfig?.provider?.model || latest?.model || null,
+    },
+    openai,
+  })
 })
 
 app.get('/api/voice/voices', requireAuth, async (req, res) => {
