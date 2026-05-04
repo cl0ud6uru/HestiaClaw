@@ -135,19 +135,31 @@ function writeAuditLog(req, action, username = null) {
 
 async function ensureBootstrapAdmin() {
   const userCount = db.prepare('SELECT COUNT(*) AS count FROM users').get().count
-  if (userCount > 0) return
 
-  if (!BOOTSTRAP_ADMIN_USERNAME || !BOOTSTRAP_ADMIN_PASSWORD) {
-    throw new Error('No admin user exists. Set BOOTSTRAP_ADMIN_USERNAME and BOOTSTRAP_ADMIN_PASSWORD.')
+  if (userCount === 0) {
+    if (!BOOTSTRAP_ADMIN_USERNAME || !BOOTSTRAP_ADMIN_PASSWORD) {
+      throw new Error('No admin user exists. Set BOOTSTRAP_ADMIN_USERNAME and BOOTSTRAP_ADMIN_PASSWORD.')
+    }
+    const now = Date.now()
+    const passwordHash = await argon2.hash(BOOTSTRAP_ADMIN_PASSWORD)
+    createUser.run(BOOTSTRAP_ADMIN_USERNAME, passwordHash, now, now)
+    console.warn(`[auth] Bootstrapped admin "${BOOTSTRAP_ADMIN_USERNAME}".`)
+    return
   }
 
-  const now = Date.now()
-  const passwordHash = await argon2.hash(BOOTSTRAP_ADMIN_PASSWORD)
-  createUser.run(BOOTSTRAP_ADMIN_USERNAME, passwordHash, now, now)
-  console.warn(
-    `[auth] Bootstrapped admin "${BOOTSTRAP_ADMIN_USERNAME}". ` +
-    'Change this password immediately from the authenticated settings panel.',
-  )
+  // If credentials are configured, keep the named account's password in sync.
+  // This lets the HA add-on config act as a password reset mechanism.
+  if (BOOTSTRAP_ADMIN_USERNAME && BOOTSTRAP_ADMIN_PASSWORD) {
+    const user = findUserByUsername.get(BOOTSTRAP_ADMIN_USERNAME)
+    if (user) {
+      const match = await argon2.verify(user.passwordHash, BOOTSTRAP_ADMIN_PASSWORD)
+      if (!match) {
+        const passwordHash = await argon2.hash(BOOTSTRAP_ADMIN_PASSWORD)
+        updateUserCredentials.run(BOOTSTRAP_ADMIN_USERNAME, passwordHash, Date.now(), user.id)
+        console.warn(`[auth] Password updated from add-on configuration for "${BOOTSTRAP_ADMIN_USERNAME}".`)
+      }
+    }
+  }
 }
 
 function isAllowedOrigin(req) {
@@ -721,11 +733,11 @@ app.get('/api/usage/summary', requireAuth, async (req, res) => {
 
 const distPath = path.resolve(ROOT_DIR, 'dist')
 if (fs.existsSync(distPath)) {
-  app.use(express.static(distPath))
+  // index: false prevents express.static from serving index.html directly so our
+  // route below can inject the HA ingress base path first.
+  app.use(express.static(distPath, { index: false }))
   app.get('/{*path}', (req, res, next) => {
     if (req.path.startsWith('/api/')) return next()
-    // Inject the HA ingress base path so the frontend can prefix /api/ fetch calls
-    // correctly when accessed through the HA ingress proxy.
     const ingressPath = req.headers['x-ingress-path'] || ''
     if (!ingressPath) return res.sendFile(path.join(distPath, 'index.html'))
     const html = fs.readFileSync(path.join(distPath, 'index.html'), 'utf8')
