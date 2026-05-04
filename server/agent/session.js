@@ -198,27 +198,40 @@ export class AgentSession {
           .filter(message => this._isValidMessage(message)),
         summary: '',
         totalMessages: rows.length,
+        needsSummary: false,
+        rowsToSummarize: [],
+        summarizeThroughId: null,
       }
     }
 
     const summaryRow = this._getSummary.get(conversationId)
-    const keptRows = this._getRecentHistory.all(conversationId, limit).reverse()
+    const fillRatio = rows.length / limit
+
+    // Stage 4: emergency — keep only the last 10 messages, force re-summarize
+    const keptCount = fillRatio > 1.9 ? 10 : limit
+    const keptRows = this._getRecentHistory.all(conversationId, keptCount).reverse()
     const firstKeptId = keptRows[0]?.id || 0
     const rowsToSummarize = rows.filter(row => row.id < firstKeptId)
-    let summary = summaryRow?.summary || ''
-
-    if (rowsToSummarize.length && (!summaryRow || summaryRow.summarizedThroughId < rowsToSummarize.at(-1).id)) {
-      summary = this._summarizeMessages(rowsToSummarize)
-      this._upsertSummary.run(conversationId, summary, rowsToSummarize.at(-1).id, Date.now())
-    }
+    const existingSummary = summaryRow?.summary || ''
+    const summaryIsStale = rowsToSummarize.length > 0 &&
+      (!summaryRow || summaryRow.summarizedThroughId < rowsToSummarize.at(-1).id)
 
     return {
       messages: keptRows
         .map(row => this._deserializeRow(row).message)
         .filter(message => this._isValidMessage(message)),
-      summary,
+      summary: existingSummary,
       totalMessages: rows.length,
+      needsSummary: summaryIsStale,
+      rowsToSummarize: summaryIsStale
+        ? rowsToSummarize.map(row => this._deserializeRow(row).message).filter(m => this._isValidMessage(m))
+        : [],
+      summarizeThroughId: summaryIsStale ? rowsToSummarize.at(-1).id : null,
     }
+  }
+
+  saveSummary(conversationId, summary, summarizedThroughId) {
+    this._upsertSummary.run(conversationId, summary, summarizedThroughId, Date.now())
   }
 
   appendMessages(conversationId, messages) {

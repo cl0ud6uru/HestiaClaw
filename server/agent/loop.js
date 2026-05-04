@@ -2,6 +2,8 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { AnthropicProvider } from './providers/anthropic.js'
 import { OpenAIProvider } from './providers/openai.js'
+import { summarizeToolResult } from './context/tool-result-summarizer.js'
+import { generateSummary } from './context/summarizer.js'
 
 const MAX_ITERATIONS = 10
 const DEFAULT_CONTEXT_MAX_MESSAGES = 40
@@ -38,7 +40,13 @@ function emit(res, event) {
  *   { type: 'done' }
  *   { type: 'error',      message }
  */
+const MEMORY_BUDGET = { pinned: 3000, notes: 1500, recall: 2000 }
+
 function buildEffectiveSystemPrompt(systemPrompt, summary, skills = [], memorySummary = '', dailyNotes = '', activeMemory = '') {
+  memorySummary = (memorySummary ?? '').slice(0, MEMORY_BUDGET.pinned)
+  dailyNotes    = (dailyNotes    ?? '').slice(0, MEMORY_BUDGET.notes)
+  activeMemory  = (activeMemory  ?? '').slice(0, MEMORY_BUDGET.recall)
+
   let prompt = systemPrompt
 
   if (memorySummary) {
@@ -53,12 +61,20 @@ function buildEffectiveSystemPrompt(systemPrompt, summary, skills = [], memorySu
     prompt += `\n\n## Active Memory Recall\nRelevant memories retrieved for this turn:\n\n${activeMemory}`
   }
 
+  const SKILL_INLINE_THRESHOLD = 600
   const invocableSkills = skills.filter(s => !s.disableModelInvocation)
-  if (invocableSkills.length > 0) {
-    const skillsSection = invocableSkills
+  const inlineSkills   = invocableSkills.filter(s => s.content.length <= SKILL_INLINE_THRESHOLD)
+  const onDemandSkills = invocableSkills.filter(s => s.content.length >  SKILL_INLINE_THRESHOLD)
+
+  if (inlineSkills.length > 0) {
+    const inlineSection = inlineSkills
       .map(s => `### /${s.name}\n${s.description}\n\n${s.content}`)
       .join('\n\n')
-    prompt += `\n\n## Skills\n\nUse these pre-defined skills when the user's request matches their description. Follow the skill instructions exactly.\n\n${skillsSection}`
+    prompt += `\n\n## Skills\n\nUse these when the user's request matches. Follow skill instructions exactly.\n\n${inlineSection}`
+  }
+  if (onDemandSkills.length > 0) {
+    const menu = onDemandSkills.map(s => `- /${s.name}: ${s.description}`).join('\n')
+    prompt += `\n\n## Extended Skills (load before use)\nCall \`invoke_skill\` with the skill name to load full instructions before executing.\n\n${menu}`
   }
 
   if (summary) prompt += `\n\nConversation summary so far:\n${summary}`
@@ -104,6 +120,18 @@ export async function runAgentLoop(res, {
     maxMessages: settings.contextMaxMessages || DEFAULT_CONTEXT_MAX_MESSAGES,
     compactionEnabled: settings.compactionEnabled !== false,
   })
+
+  // Upgrade to LLM summary if unsummarized messages exist behind the kept window
+  if (context.needsSummary) {
+    try {
+      const llmSummary = await generateSummary(provider, context.rowsToSummarize)
+      session.saveSummary(conversationId, llmSummary, context.summarizeThroughId)
+      context.summary = llmSummary
+    } catch (err) {
+      console.warn('[agent] LLM summary failed, using existing summary:', err.message)
+    }
+  }
+
   const effectiveSystemPrompt = buildEffectiveSystemPrompt(systemPrompt, context.summary, skills, memorySummary, dailyNotes, activeMemory)
 
   if (activatedSkill) {
@@ -120,6 +148,7 @@ export async function runAgentLoop(res, {
       messageCount: context.totalMessages,
       keptMessages: context.messages.length,
       summaryLength: context.summary.length,
+      llmSummary: context.needsSummary,
     })
   }
   const history = context.messages
@@ -253,7 +282,8 @@ export async function runAgentLoop(res, {
           result = `Error: ${err.message}`
           hasError = true
         }
-        toolResults.push({ id: tc.id, name: tc.name, result })
+        const modelResult = summarizeToolResult(tc.name, result)
+        toolResults.push({ id: tc.id, name: tc.name, result: modelResult })
         session.finishToolCall(runId, {
           id: tc.id,
           result: hasError ? null : result,
