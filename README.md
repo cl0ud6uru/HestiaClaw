@@ -40,6 +40,61 @@ Under the hood: a React + Vite frontend, an Express agent harness, real-time tok
 
 ---
 
+## Install as Home Assistant Add-on
+
+The easiest way to run HestiaClaw is directly inside Home Assistant as an add-on. No separate server required — it runs alongside HA and connects automatically.
+
+### 1. Add the repository
+
+In Home Assistant → **Settings → Add-ons → Add-on Store** → overflow menu (⋮) → **Repositories**, add:
+
+```
+https://github.com/cl0ud6uru/HestiaClaw
+```
+
+### 2. Install HestiaClaw
+
+Find **HestiaClaw** in the store and click **Install**.
+
+### 3. Create a long-lived access token
+
+The add-on needs a Home Assistant token to control your devices:
+
+1. Go to your HA profile (bottom-left avatar) → **Security** tab
+2. Scroll to **Long-lived access tokens** → **Create token**
+3. Name it `HestiaClaw` and copy the value
+
+### 4. Configure the add-on
+
+In the HestiaClaw add-on → **Configuration** tab:
+
+| Option | Required | Description |
+|---|---|---|
+| `provider` | ✅ | `anthropic` or `openai` |
+| `model` | ✅ | Model ID (e.g. `claude-opus-4-7`, `gpt-4o`) |
+| `anthropic_api_key` | Provider | Anthropic API key |
+| `openai_api_key` | Provider | OpenAI API key |
+| `ha_token` | ✅ | Long-lived access token created above |
+| `admin_username` | ✅ | Login username for the Hestia UI |
+| `admin_password` | ✅ | Login password — auto-generated and logged if left blank |
+| `system_prompt` | — | Custom system prompt; a default home-assistant prompt is used if blank |
+| `elevenlabs_api_key` | Voice | ElevenLabs key for STT + TTS |
+| `elevenlabs_default_voice_id` | Voice | Default TTS voice ID |
+| `graphiti_url` | Memory | URL of an external Graphiti MCP server (e.g. `http://your-server:8001/mcp`) |
+| `neo4j_uri` | Graph | Bolt URI for an external Neo4j instance |
+| `neo4j_user` | Graph | Neo4j username, default `neo4j` |
+| `neo4j_password` | Graph | Neo4j password |
+| `searxng_url` | Search | SearXNG instance URL for web search |
+| `session_secret` | — | Session cookie secret; auto-generated if blank |
+
+### 5. Start and open
+
+Click **Start**. Once running, the **HestiaClaw** panel appears in the HA sidebar.
+
+> **Note:** Graphiti / Neo4j are optional. Without them the memory and knowledge graph features are disabled, but chat and all HA tools work normally.
+
+---
+
 ## Quickstart
 
 The full stack — Neo4j, Graphiti MCP, ha-mcp, and Hestia — starts with one command.
