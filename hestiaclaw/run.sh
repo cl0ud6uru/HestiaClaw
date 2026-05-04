@@ -37,9 +37,17 @@ if [ -z "$BOOTSTRAP_ADMIN_PASSWORD" ]; then
 fi
 export BOOTSTRAP_ADMIN_PASSWORD
 
-# Home Assistant connection — provided automatically by Supervisor
+# Home Assistant connection
+# Prefer an explicit long-lived token from config; fall back to the Supervisor token
 export HA_URL="http://homeassistant:8123"
-export HA_TOKEN="${SUPERVISOR_TOKEN}"
+HA_TOKEN_CONFIG=$(opt ha_token)
+if [ -n "$HA_TOKEN_CONFIG" ]; then
+  export HA_TOKEN="$HA_TOKEN_CONFIG"
+  echo "[ha] Using long-lived access token from add-on config"
+else
+  export HA_TOKEN="${SUPERVISOR_TOKEN}"
+  echo "[ha] Using Supervisor token (set ha_token in config to use a long-lived token)"
+fi
 export HOMEASSISTANT_URL="${HA_URL}"
 export HOMEASSISTANT_TOKEN="${HA_TOKEN}"
 
