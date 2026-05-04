@@ -724,7 +724,12 @@ if (fs.existsSync(distPath)) {
   app.use(express.static(distPath))
   app.get('/{*path}', (req, res, next) => {
     if (req.path.startsWith('/api/')) return next()
-    return res.sendFile(path.join(distPath, 'index.html'))
+    // Inject the HA ingress base path so the frontend can prefix /api/ fetch calls
+    // correctly when accessed through the HA ingress proxy.
+    const ingressPath = req.headers['x-ingress-path'] || ''
+    if (!ingressPath) return res.sendFile(path.join(distPath, 'index.html'))
+    const html = fs.readFileSync(path.join(distPath, 'index.html'), 'utf8')
+    return res.send(html.replace('</head>', `<script>window.__BASE__="${ingressPath}"</script></head>`))
   })
 }
 
