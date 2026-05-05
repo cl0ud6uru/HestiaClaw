@@ -234,7 +234,11 @@ app.use(session({
   rolling: true,
   cookie: {
     httpOnly: true,
-    secure: 'auto',
+    // HA Supervisor's ingress proxy always advertises X-Forwarded-Proto: https
+    // even for plain HTTP local connections, so secure:true/auto silently drops
+    // cookies on local HTTP. The ingress is behind HA's own auth layer so the
+    // Secure flag adds no meaningful protection here.
+    secure: false,
     sameSite: 'lax',
     maxAge: 1000 * 60 * 60 * 24 * 7,
   },

@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.8
+
+- Fix session cookie on local HTTP — HA Supervisor's ingress always sets `X-Forwarded-Proto: https` regardless of actual protocol, causing `secure:auto` to drop cookies on local HTTP access; set `secure: false` explicitly since the add-on is already behind HA's own auth layer
+
 ## 1.0.7
 
 - Fix session cookie on local network — use `secure: auto` so cookies work over HTTP (local) and HTTPS (external/Nabu Casa) without manual configuration
