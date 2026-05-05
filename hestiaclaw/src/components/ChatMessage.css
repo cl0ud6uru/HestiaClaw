@@ -250,6 +250,132 @@
   animation: blink-cursor 0.8s step-end infinite;
 }
 
+/* ── Approval card ── */
+
+.approval-card {
+  position: relative;
+  padding: 14px 16px;
+  background: rgba(0, 8, 24, 0.85);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(0, 212, 255, 0.45);
+  border-radius: 2px;
+  max-width: 520px;
+  box-shadow: 0 0 16px rgba(0, 212, 255, 0.08);
+}
+
+.approval-card__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.approval-card__label {
+  font-family: 'Orbitron', monospace;
+  font-size: 0.52rem;
+  letter-spacing: 0.14em;
+  color: #00d4ff;
+}
+
+.approval-card__risk {
+  font-family: 'Orbitron', monospace;
+  font-size: 0.48rem;
+  letter-spacing: 0.1em;
+  padding: 2px 7px;
+  border: 1px solid rgba(0, 212, 255, 0.5);
+  color: #00d4ff;
+}
+
+.approval-card__risk--high {
+  border-color: rgba(255, 51, 102, 0.6);
+  color: #ff3366;
+}
+
+.approval-card__risk--medium {
+  border-color: rgba(255, 170, 0, 0.6);
+  color: #ffaa00;
+}
+
+.approval-card__tool {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 1rem;
+  color: #c8e8ff;
+  margin-bottom: 10px;
+}
+
+.approval-card__input {
+  background: rgba(0, 4, 18, 0.9);
+  border-left: 2px solid rgba(0, 212, 255, 0.35);
+  padding: 8px 12px;
+  overflow-x: auto;
+  margin-bottom: 12px;
+}
+
+.approval-card__input pre {
+  margin: 0;
+  font-family: 'JetBrains Mono', 'Courier New', monospace;
+  font-size: 0.78rem;
+  color: #b0d8f0;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.approval-card__actions {
+  display: flex;
+  gap: 10px;
+}
+
+.approval-btn {
+  font-family: 'Orbitron', monospace;
+  font-size: 0.48rem;
+  letter-spacing: 0.16em;
+  padding: 5px 14px;
+  background: none;
+  border: 1px solid;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.approval-btn--approve {
+  border-color: #00ffaa;
+  color: #00ffaa;
+}
+
+.approval-btn--approve:hover:not(:disabled) {
+  background: #00ffaa;
+  color: #030810;
+}
+
+.approval-btn--deny {
+  border-color: #ff3366;
+  color: #ff3366;
+}
+
+.approval-btn--deny:hover:not(:disabled) {
+  background: #ff3366;
+  color: #030810;
+}
+
+.approval-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.approval-card__status {
+  font-family: 'Orbitron', monospace;
+  font-size: 0.48rem;
+  letter-spacing: 0.14em;
+  margin-top: 8px;
+}
+
+.approval-card__status--approved {
+  color: #00ffaa;
+}
+
+.approval-card__status--denied {
+  color: #ff3366;
+}
+
 @media (max-width: 768px) {
   .msg-row {
     max-width: 100%;

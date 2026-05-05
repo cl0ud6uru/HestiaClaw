@@ -1,4 +1,63 @@
 import { useState, useRef } from 'react'
+
+function ApprovalCard({ message, onApprovalDecision }) {
+  const [decisionState, setDecisionState] = useState('pending')
+
+  const handleClick = (approved) => {
+    if (decisionState !== 'pending') return
+    setDecisionState(approved ? 'approved' : 'denied')
+    onApprovalDecision(message.approvalId, approved)
+  }
+
+  const riskClass = message.risk === 'high'
+    ? 'approval-card__risk--high'
+    : message.risk === 'medium'
+      ? 'approval-card__risk--medium'
+      : ''
+
+  return (
+    <div className="msg-row msg-row--assistant">
+      <div className="msg-avatar"><span>H</span></div>
+      <div className="approval-card">
+        <span className="bubble-corner tl" />
+        <span className="bubble-corner tr" />
+        <span className="bubble-corner bl" />
+        <span className="bubble-corner br" />
+        <div className="approval-card__header">
+          <span className="approval-card__label">TOOL APPROVAL REQUIRED</span>
+          <span className={`approval-card__risk ${riskClass}`}>
+            {(message.risk || 'risky').toUpperCase()}
+          </span>
+        </div>
+        <div className="approval-card__tool">{message.toolName}</div>
+        <div className="approval-card__input">
+          <pre>{JSON.stringify(message.input || {}, null, 2)}</pre>
+        </div>
+        <div className="approval-card__actions">
+          <button
+            className="approval-btn approval-btn--approve"
+            disabled={decisionState !== 'pending'}
+            onClick={() => handleClick(true)}
+          >
+            APPROVE
+          </button>
+          <button
+            className="approval-btn approval-btn--deny"
+            disabled={decisionState !== 'pending'}
+            onClick={() => handleClick(false)}
+          >
+            DENY
+          </button>
+        </div>
+        {decisionState !== 'pending' && (
+          <div className={`approval-card__status approval-card__status--${decisionState}`}>
+            {decisionState === 'approved' ? 'APPROVED' : 'DENIED'}
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter'
@@ -88,7 +147,11 @@ function preprocessMarkdown(text) {
   return out.join('\n')
 }
 
-export default function ChatMessage({ message }) {
+export default function ChatMessage({ message, onApprovalDecision }) {
+  if (message.isApproval) {
+    return <ApprovalCard message={message} onApprovalDecision={onApprovalDecision} />
+  }
+
   const isUser = message.role === 'user'
 
   return (

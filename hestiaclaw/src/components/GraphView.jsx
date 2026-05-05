@@ -701,7 +701,7 @@ export default function GraphView({ onClose }) {
                   try {
                     const res = await fetch('/api/graph/recompute', { method: 'POST' })
                     const data = await res.json().catch(() => ({}))
-                    if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`)
+                    if (!res.ok) throw new Error(data.detail ? `${data.error}: ${data.detail}` : data.error || `HTTP ${res.status}`)
                     setRecomputeMsg('DONE')
                     setTimeout(() => {
                       setRecomputeMsg('')

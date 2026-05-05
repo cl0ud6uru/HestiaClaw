@@ -93,6 +93,7 @@ export default function App() {
   const speechPlaybackRef = useRef(null)
   const speechUrlRef = useRef('')
   const fetchedVoiceConvsRef = useRef(new Set())
+  const approvalResolvers = useRef({})
 
   const activeConv = conversations.find(c => c.id === activeId) ?? conversations[0] ?? null
   const messages = activeConv?.messages ?? []
@@ -632,6 +633,14 @@ export default function App() {
     }
   }
 
+  const handleApprovalDecision = (approvalId, approved) => {
+    const entry = approvalResolvers.current[approvalId]
+    if (!entry) return
+    delete approvalResolvers.current[approvalId]
+    updateMessages(entry.convId, prev => prev.filter(m => m.id !== `approval-${approvalId}`))
+    entry.resolve(approved)
+  }
+
   const forkActiveAgentConversation = async () => {
     if (!activeConv) return
 
@@ -752,9 +761,20 @@ export default function App() {
           } else if (event.type === 'approval_required') {
             const displayName = event.name.replace(/__/g, ': ')
             setActiveToolName(`Approval: ${displayName}`)
-            const approved = window.confirm(
-              `Approve ${event.risk || 'risky'} ${event.kind || 'tool'} tool call?\n\n${displayName}\n\n${JSON.stringify(event.input || {}, null, 2)}`,
-            )
+            updateMessages(convId, prev => [...prev, {
+              id: `approval-${event.approvalId}`,
+              role: 'assistant',
+              isApproval: true,
+              approvalId: event.approvalId,
+              toolName: displayName,
+              input: event.input,
+              risk: event.risk,
+              kind: event.kind,
+              streaming: false,
+            }])
+            const approved = await new Promise(resolve => {
+              approvalResolvers.current[event.approvalId] = { resolve, convId }
+            })
             await resolveToolApproval(
               event.approvalId,
               approved,
@@ -1148,7 +1168,11 @@ export default function App() {
           <ChatBackground pulseAt={memoryPulseAt} />
           <main className="messages-area">
             {messages.map(msg => (
-              <ChatMessage key={msg.id} message={msg} />
+              <ChatMessage
+                key={msg.id}
+                message={msg}
+                onApprovalDecision={msg.isApproval ? handleApprovalDecision : undefined}
+              />
             ))}
             {isThinking && <ThinkingAnimation activeTool={activeToolName} />}
             <div ref={bottomRef} />

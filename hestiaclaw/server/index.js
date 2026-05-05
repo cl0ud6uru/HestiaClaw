@@ -652,12 +652,12 @@ app.post('/api/graph/recompute', requireSameOrigin, requireAuth, async (req, res
   const session = neo4jDriver.session()
   try {
     // Drop existing projection if one is lingering from a previous failed run
-    await session.run(`
-      CALL gds.graph.exists('hestia-graph') YIELD exists
-      WITH exists WHERE exists = true
-      CALL gds.graph.drop('hestia-graph') YIELD graphName
-      RETURN graphName
-    `).catch(() => {})
+    try {
+      const existsResult = await session.run(`CALL gds.graph.exists('hestia-graph') YIELD exists RETURN exists`)
+      if (existsResult.records[0]?.get('exists') === true) {
+        await session.run(`CALL gds.graph.drop('hestia-graph') YIELD graphName RETURN graphName`)
+      }
+    } catch { /* projection may not exist or GDS not yet loaded */ }
 
     const projectResult = await session.run(`
       CALL gds.graph.project('hestia-graph', '*', {RELATES_TO: {orientation: 'UNDIRECTED'}})
