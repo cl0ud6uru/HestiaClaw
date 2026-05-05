@@ -1,5 +1,5 @@
 name: HestiaClaw Neo4j
-version: "1.0.0"
+version: "1.0.1"
 slug: hestiaclaw_neo4j
 description: Neo4j Community Edition with GDS plugin for HestiaClaw knowledge graph
 url: https://github.com/cl0ud6uru/hestiaclaw
