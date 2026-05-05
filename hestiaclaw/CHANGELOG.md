@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.9
+
+- Fix local HA ingress paths that are forwarded to the add-on with the `/ee1bc088_hestiaclaw` prefix still attached; the server now strips HA ingress prefixes before route matching, and the frontend falls back to the current path prefix when `X-Ingress-Path` is missing
+
 ## 1.0.8
 
 - Fix session cookie on local HTTP — HA Supervisor's ingress always sets `X-Forwarded-Proto: https` regardless of actual protocol, causing `secure:auto` to drop cookies on local HTTP access; set `secure: false` explicitly since the add-on is already behind HA's own auth layer

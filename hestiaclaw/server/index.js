@@ -92,6 +92,32 @@ if (TRUST_PROXY) {
   app.set('trust proxy', Number.isNaN(Number(TRUST_PROXY)) ? TRUST_PROXY : Number(TRUST_PROXY))
 }
 
+function normalizeIngressPath(req, res, next) {
+  const originalUrl = req.url
+  const [rawPath, query = ''] = originalUrl.split('?')
+  const candidates = []
+
+  const headerPath = String(req.headers['x-ingress-path'] || '').replace(/\/$/, '')
+  if (headerPath) candidates.push(headerPath)
+
+  const hassioMatch = rawPath.match(/^\/api\/hassio_ingress\/[^/]+(?=\/|$)/)
+  if (hassioMatch) candidates.push(hassioMatch[0])
+
+  const slugMatch = rawPath.match(/^\/[a-f0-9]+_[A-Za-z0-9_-]+(?=\/|$)/)
+  if (slugMatch) candidates.push(slugMatch[0])
+
+  const prefix = candidates.find(candidate => rawPath === candidate || rawPath.startsWith(`${candidate}/`))
+  if (prefix) {
+    req.ingressBase = prefix
+    const nextPath = rawPath.slice(prefix.length) || '/'
+    req.url = `${nextPath}${query ? `?${query}` : ''}`
+  }
+
+  next()
+}
+
+app.use(normalizeIngressPath)
+
 const db = new Database(DATABASE_PATH)
 db.pragma('journal_mode = WAL')
 db.exec(`
@@ -742,10 +768,10 @@ if (fs.existsSync(distPath)) {
   app.use(express.static(distPath, { index: false }))
   app.get('/{*path}', (req, res, next) => {
     if (req.path.startsWith('/api/')) return next()
-    const ingressPath = req.headers['x-ingress-path'] || ''
+    const ingressPath = String(req.ingressBase || req.headers['x-ingress-path'] || '')
     if (!ingressPath) return res.sendFile(path.join(distPath, 'index.html'))
     const html = fs.readFileSync(path.join(distPath, 'index.html'), 'utf8')
-    return res.send(html.replace('</head>', `<script>window.__BASE__="${ingressPath}"</script></head>`))
+    return res.send(html.replace('</head>', `<script>window.__BASE__=${JSON.stringify(ingressPath)}</script></head>`))
   })
 }
 
