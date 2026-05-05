@@ -45,7 +45,7 @@ Every HestiaClaw conversation is stored as an episode in Graphiti. Graphiti extr
 
 Neo4j database files are stored in the add-on's data volume at `/data/neo4j` and survive restarts and updates.
 
-The `password` option initializes Neo4j only when the database is first created. If you change it after `/data/neo4j` already exists, Neo4j may keep the old password and Graphiti can fail with `Neo.ClientError.Security.Unauthorized` or `AuthenticationRateLimit`. Restore the original password, or set `reset_neo4j_data` to `true` for one start if you intentionally want to recreate Neo4j with the current password.
+The `password` option is applied with `neo4j-admin dbms set-initial-password` before the first database startup. If you change it after `/data/neo4j` already exists, Neo4j keeps the old password and Graphiti can fail with `Neo.ClientError.Security.Unauthorized` or `AuthenticationRateLimit`. Restore the original password, or set `reset_neo4j_data` to `true` for one start if you intentionally want to recreate Neo4j with the current password.
 
 ## Resource Usage
 

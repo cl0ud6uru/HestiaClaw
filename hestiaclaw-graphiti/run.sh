@@ -24,6 +24,11 @@ fi
 
 mkdir -p /data/neo4j
 
+if [ ! -d /data/neo4j/data/databases/system ]; then
+  echo "Initializing Neo4j password for a new database store..."
+  neo4j-admin dbms set-initial-password --require-password-change=false "$PASSWORD"
+fi
+
 echo "Starting Neo4j..."
 neo4j console &
 
