@@ -29,7 +29,7 @@ export function readDailyNotes(notesDir) {
  * Emit a single NDJSON line to the response stream.
  */
 function emit(res, event) {
-  res.write(JSON.stringify(event) + '\n')
+  try { res.write(JSON.stringify(event) + '\n') } catch {}
 }
 
 /**

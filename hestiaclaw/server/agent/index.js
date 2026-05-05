@@ -103,29 +103,34 @@ export function createAgentRouter({ provider, session, registry, systemPrompt, m
       } catch { /* fail silently — Graphiti may be slow or down */ }
     }
 
-    await runAgentLoop(res, {
-      provider: currentProvider,
-      session,
-      registry,
-      systemPrompt: fullSystemPrompt,
-      conversationId,
-      userMessage,
-      approvals: runtimeSettings.approvalsEnabled ? approvals : null,
-      events,
-      skills,
-      activatedSkill,
-      memorySummary,
-      dailyNotes,
-      activeMemory,
-      allowedTools: runtimeSettings.allowedTools,
-      settings: {
-        contextMaxMessages: runtimeSettings.contextMaxMessages,
-        compactionEnabled: runtimeSettings.compactionEnabled,
-        model: runtimeSettings.model,
-        reasoningEffort: runtimeSettings.reasoningEffort,
-        thinkingBudget: runtimeSettings.thinkingBudget,
-      },
-    })
+    try {
+      await runAgentLoop(res, {
+        provider: currentProvider,
+        session,
+        registry,
+        systemPrompt: fullSystemPrompt,
+        conversationId,
+        userMessage,
+        approvals: runtimeSettings.approvalsEnabled ? approvals : null,
+        events,
+        skills,
+        activatedSkill,
+        memorySummary,
+        dailyNotes,
+        activeMemory,
+        allowedTools: runtimeSettings.allowedTools,
+        settings: {
+          contextMaxMessages: runtimeSettings.contextMaxMessages,
+          compactionEnabled: runtimeSettings.compactionEnabled,
+          model: runtimeSettings.model,
+          reasoningEffort: runtimeSettings.reasoningEffort,
+          thinkingBudget: runtimeSettings.thinkingBudget,
+        },
+      })
+    } catch (err) {
+      console.error('[agent] Unhandled loop error:', err.message)
+      try { res.write(JSON.stringify({ type: 'error', message: err.message || 'Agent error.' }) + '\n') } catch {}
+    }
 
     res.end()
   })
