@@ -81,4 +81,4 @@ graphiti:
       description: "Physical items, tools, devices, or possessions"
 EOF
 
-exec /app/mcp/.venv/bin/python /app/mcp_server/graphiti_mcp_server.py --config /data/graphiti_config.yaml
+exec /app/mcp/.venv/bin/python /app/mcp/src/graphiti_mcp_server.py --config /data/graphiti_config.yaml

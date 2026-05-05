@@ -6,7 +6,7 @@ RUN pip install --no-cache-dir jq 2>/dev/null; \
 
 # Replace the upstream MCP server with our patched version (binds to 0.0.0.0
 # instead of 127.0.0.1 so cross-container connections work)
-COPY graphiti_mcp_server.py /app/mcp_server/graphiti_mcp_server.py
+COPY graphiti_mcp_server.py /app/mcp/src/graphiti_mcp_server.py
 
 COPY run.sh /run.sh
 RUN chmod +x /run.sh
