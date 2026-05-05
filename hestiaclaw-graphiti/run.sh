@@ -6,6 +6,7 @@ opt() { jq -r --arg k "$1" '.[$k] // ""' "$OPTIONS"; }
 
 PASSWORD=$(opt password)
 PASSWORD="${PASSWORD:-changeme}"
+RESET_NEO4J_DATA=$(opt reset_neo4j_data)
 LLM_PROVIDER=$(opt llm_provider)
 LLM_MODEL=$(opt llm_model)
 OPENAI_API_KEY=$(opt openai_api_key)
@@ -15,6 +16,12 @@ ANTHROPIC_API_KEY=$(opt anthropic_api_key)
 export NEO4J_AUTH="neo4j/${PASSWORD}"
 export NEO4J_dbms_security_auth__lock__time=0
 export NEO4J_HOME=/data/neo4j
+
+if [ "$RESET_NEO4J_DATA" = "true" ]; then
+  echo "reset_neo4j_data is true; deleting persisted Neo4j data so the configured password can be initialized."
+  rm -rf /data/neo4j
+fi
+
 mkdir -p /data/neo4j
 
 echo "Starting Neo4j..."
@@ -32,6 +39,15 @@ until nc -z localhost 7687 2>/dev/null; do
 done
 echo "Neo4j port open — waiting 10s for full initialization..."
 sleep 10
+
+echo "Checking Neo4j authentication..."
+if ! cypher-shell -a bolt://localhost:7687 -u neo4j -p "$PASSWORD" "RETURN 1;" >/tmp/neo4j_auth_check.log 2>&1; then
+  echo "Neo4j rejected the configured add-on password."
+  echo "This usually means /data/neo4j already exists with a different password."
+  echo "Set the add-on password back to the original value, or enable reset_neo4j_data once to recreate Neo4j with the current password."
+  cat /tmp/neo4j_auth_check.log
+  exit 1
+fi
 
 # --- Graphiti ---
 export NEO4J_URI="bolt://localhost:7687"

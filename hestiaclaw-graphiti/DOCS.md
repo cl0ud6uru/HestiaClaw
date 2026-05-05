@@ -15,6 +15,7 @@ Graphiti temporal knowledge graph MCP server with **Neo4j built-in**. Provides H
 | Option | Required | Description |
 |--------|----------|-------------|
 | `password` | Yes | Neo4j database password. Used internally — just set it once here. |
+| `reset_neo4j_data` | No | Deletes persisted Neo4j data on next start so the current password can be initialized. Turn it back off after one successful start. |
 | `llm_provider` | Yes | `openai` or `anthropic` |
 | `llm_model` | Yes | Model for entity extraction, e.g. `gpt-5-mini` or `claude-haiku-4-5-20251001` |
 | `openai_api_key` | Yes | OpenAI API key (required for embeddings even when using Anthropic as LLM) |
@@ -44,7 +45,7 @@ Every HestiaClaw conversation is stored as an episode in Graphiti. Graphiti extr
 
 Neo4j database files are stored in the add-on's data volume at `/data/neo4j` and survive restarts and updates.
 
-The `password` option initializes Neo4j only when the database is first created. If you change it after `/data/neo4j` already exists, Neo4j may keep the old password and Graphiti can fail with `Neo.ClientError.Security.Unauthorized` or `AuthenticationRateLimit`. Restore the original password or reset the persisted Neo4j data if you intentionally want a new password.
+The `password` option initializes Neo4j only when the database is first created. If you change it after `/data/neo4j` already exists, Neo4j may keep the old password and Graphiti can fail with `Neo.ClientError.Security.Unauthorized` or `AuthenticationRateLimit`. Restore the original password, or set `reset_neo4j_data` to `true` for one start if you intentionally want to recreate Neo4j with the current password.
 
 ## Resource Usage
 

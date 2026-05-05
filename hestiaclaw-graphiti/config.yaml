@@ -1,5 +1,5 @@
 name: HestiaClaw Graphiti
-version: "2.0.6"
+version: "2.0.7"
 slug: hestiaclaw_graphiti
 description: Graphiti MCP server with built-in Neo4j. One add-on for long-term memory — no separate Neo4j add-on needed.
 url: https://github.com/cl0ud6uru/hestiaclaw
@@ -19,6 +19,7 @@ map:
 
 options:
   password: "changeme"
+  reset_neo4j_data: false
   llm_provider: "openai"
   llm_model: "gpt-5-mini"
   openai_api_key: ""
@@ -26,6 +27,7 @@ options:
 
 schema:
   password: password
+  reset_neo4j_data: bool
   llm_provider: list(openai|anthropic)
   llm_model: str
   openai_api_key: password
