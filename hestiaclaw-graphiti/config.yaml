@@ -1,5 +1,5 @@
 name: HestiaClaw Graphiti
-version: "1.0.4"
+version: "1.0.5"
 slug: hestiaclaw_graphiti
 description: Graphiti temporal knowledge graph MCP server for HestiaClaw long-term memory
 url: https://github.com/cl0ud6uru/hestiaclaw
@@ -20,7 +20,7 @@ map:
 options:
   neo4j_uri: "bolt://localhost:7687"
   neo4j_user: "neo4j"
-  neo4j_password: ""
+  neo4j_password: "changeme"
   llm_provider: "openai"
   llm_model: "gpt-4o-mini"
   openai_api_key: ""

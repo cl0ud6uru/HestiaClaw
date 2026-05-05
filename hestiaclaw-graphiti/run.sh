@@ -81,4 +81,20 @@ graphiti:
       description: "Physical items, tools, devices, or possessions"
 EOF
 
+# Wait for Neo4j to accept connections before starting
+NEO4J_HOST=$(echo "${NEO4J_URI}" | sed 's|bolt://||' | cut -d: -f1)
+NEO4J_PORT=$(echo "${NEO4J_URI}" | sed 's|bolt://||' | cut -d: -f2)
+NEO4J_PORT="${NEO4J_PORT:-7687}"
+echo "Waiting for Neo4j at ${NEO4J_HOST}:${NEO4J_PORT}..."
+retries=0
+until nc -z "${NEO4J_HOST}" "${NEO4J_PORT}" 2>/dev/null; do
+  retries=$((retries + 1))
+  if [ $retries -ge 60 ]; then
+    echo "Neo4j not reachable after 60s, starting anyway"
+    break
+  fi
+  sleep 1
+done
+echo "Neo4j reachable, starting Graphiti"
+
 exec /app/mcp/.venv/bin/python /app/mcp/src/graphiti_mcp_server.py --config /data/graphiti_config.yaml
