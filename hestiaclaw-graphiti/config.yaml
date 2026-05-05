@@ -32,5 +32,5 @@ schema:
   neo4j_password: password
   llm_provider: list(openai|anthropic)
   llm_model: str
-  openai_api_key: str
-  anthropic_api_key: str
+  openai_api_key: password
+  anthropic_api_key: password

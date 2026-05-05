@@ -11,4 +11,4 @@ COPY graphiti_mcp_server.py /app/mcp_server/graphiti_mcp_server.py
 COPY run.sh /run.sh
 RUN chmod +x /run.sh
 
-CMD ["/run.sh"]
+ENTRYPOINT ["/run.sh"]
