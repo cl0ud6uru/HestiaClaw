@@ -95,6 +95,9 @@ until nc -z "${NEO4J_HOST}" "${NEO4J_PORT}" 2>/dev/null; do
   fi
   sleep 1
 done
-echo "Neo4j reachable, starting Graphiti"
+# Port is open but Neo4j needs a few more seconds to finish auth initialization
+echo "Neo4j port open, waiting 10s for full initialization..."
+sleep 10
+echo "Starting Graphiti"
 
 exec /app/mcp/.venv/bin/python /app/mcp/src/graphiti_mcp_server.py --config /data/graphiti_config.yaml

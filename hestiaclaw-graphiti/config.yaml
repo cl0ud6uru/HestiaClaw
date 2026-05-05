@@ -1,7 +1,7 @@
 name: HestiaClaw Graphiti
-version: "1.0.5"
+version: "1.0.6"
 slug: hestiaclaw_graphiti
-description: Graphiti temporal knowledge graph MCP server for HestiaClaw long-term memory
+description: "Graphiti MCP server for HestiaClaw long-term memory. neo4j_password MUST match the password set in the HestiaClaw Neo4j add-on."
 url: https://github.com/cl0ud6uru/hestiaclaw
 arch:
   - amd64
