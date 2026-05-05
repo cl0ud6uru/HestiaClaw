@@ -49,7 +49,7 @@ server:
 
 llm:
   provider: "${LLM_PROVIDER:-openai}"
-  model: "${LLM_MODEL:-gpt-4o-mini}"
+  model: "${LLM_MODEL:-gpt-5-mini}"
   max_tokens: 4096
 
   providers:

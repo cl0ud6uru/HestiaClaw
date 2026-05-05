@@ -16,7 +16,7 @@ Graphiti temporal knowledge graph MCP server with **Neo4j built-in**. Provides H
 |--------|----------|-------------|
 | `password` | Yes | Neo4j database password. Used internally — just set it once here. |
 | `llm_provider` | Yes | `openai` or `anthropic` |
-| `llm_model` | Yes | Model for entity extraction, e.g. `gpt-4o-mini` or `claude-haiku-4-5-20251001` |
+| `llm_model` | Yes | Model for entity extraction, e.g. `gpt-5-mini` or `claude-haiku-4-5-20251001` |
 | `openai_api_key` | Yes | OpenAI API key (required for embeddings even when using Anthropic as LLM) |
 | `anthropic_api_key` | If llm_provider=anthropic | Anthropic API key |
 
