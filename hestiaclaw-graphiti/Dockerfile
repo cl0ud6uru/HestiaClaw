@@ -4,13 +4,23 @@ FROM zepai/knowledge-graph-mcp:latest AS graphiti
 # Stage 2: Neo4j as the base (includes JVM + GDS plugin support) with graphiti layered on top
 FROM neo4j:2026-community
 
-# Install Python 3, jq, and netcat for the run script
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    python3 jq netcat-openbsd \
-    && rm -rf /var/lib/apt/lists/*
-
-# Copy graphiti app (venv + server) from stage 1
+# Copy graphiti app first so we can detect the Python version the venv was built with
 COPY --from=graphiti /app /app
+
+# Install the exact Python version used by the graphiti venv, plus utilities.
+# Then fix the venv symlinks — they point to the graphiti image's Python path which
+# doesn't exist in this base image, causing ModuleNotFoundError for graphiti_core.
+RUN set -e; \
+    VENV_PY=$(ls /app/mcp/.venv/lib/ | grep '^python' | head -1); \
+    apt-get update; \
+    apt-get install -y --no-install-recommends "${VENV_PY}" jq netcat-openbsd; \
+    rm -rf /var/lib/apt/lists/*; \
+    SYS_PY_BIN=$(command -v "${VENV_PY}" || echo "/usr/bin/${VENV_PY}"); \
+    SYS_PY_DIR=$(dirname "${SYS_PY_BIN}"); \
+    ln -sf "${SYS_PY_BIN}" /app/mcp/.venv/bin/"${VENV_PY}"; \
+    ln -sf "${VENV_PY}" /app/mcp/.venv/bin/python3; \
+    ln -sf "${VENV_PY}" /app/mcp/.venv/bin/python; \
+    sed -i "s|^home = .*|home = ${SYS_PY_DIR}|" /app/mcp/.venv/pyvenv.cfg || true
 
 # Neo4j settings
 ENV NEO4J_PLUGINS='["graph-data-science"]'
