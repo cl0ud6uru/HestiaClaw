@@ -102,4 +102,17 @@ graphiti:
 EOF
 
 echo "Starting Graphiti MCP server..."
-exec /app/mcp/.venv/bin/python /app/mcp/src/graphiti_mcp_server.py --config /data/graphiti_config.yaml
+PYTHON=/opt/graphiti-venv/bin/python
+
+if [ ! -x "$PYTHON" ]; then
+  echo "Graphiti Python runtime is missing or not executable: $PYTHON"
+  exit 1
+fi
+
+if ! "$PYTHON" -c "import graphiti_core" 2>/tmp/graphiti_import_error.log; then
+  echo "Graphiti Python runtime cannot import graphiti_core. Build dependencies are incomplete."
+  cat /tmp/graphiti_import_error.log
+  exit 1
+fi
+
+exec "$PYTHON" /app/mcp/src/graphiti_mcp_server.py --config /data/graphiti_config.yaml

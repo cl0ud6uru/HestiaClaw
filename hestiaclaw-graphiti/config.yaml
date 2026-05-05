@@ -1,5 +1,5 @@
 name: HestiaClaw Graphiti
-version: "2.0.5"
+version: "2.0.6"
 slug: hestiaclaw_graphiti
 description: Graphiti MCP server with built-in Neo4j. One add-on for long-term memory — no separate Neo4j add-on needed.
 url: https://github.com/cl0ud6uru/hestiaclaw

@@ -15,9 +15,29 @@ COPY --from=graphiti /usr/local /usr/local
 
 # Install jq and netcat for run.sh; refresh linker cache for the copied Python lib
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    jq netcat-openbsd \
+    jq netcat-openbsd python3 python3-venv python3-pip \
     && rm -rf /var/lib/apt/lists/* \
     && ldconfig
+
+# Build a deterministic Python environment in the final image. Do not rely on
+# the upstream image's venv path; it has changed across builds.
+RUN python3 -m venv /opt/graphiti-venv \
+    && /opt/graphiti-venv/bin/python -m pip install --upgrade pip setuptools wheel \
+    && if [ -f /app/mcp/requirements.txt ]; then \
+        /opt/graphiti-venv/bin/pip install -r /app/mcp/requirements.txt; \
+      elif [ -f /app/requirements.txt ]; then \
+        /opt/graphiti-venv/bin/pip install -r /app/requirements.txt; \
+      fi \
+    && /opt/graphiti-venv/bin/pip install \
+        "graphiti-core" \
+        "mcp[cli]" \
+        "python-dotenv" \
+        "pydantic" \
+        "starlette" \
+        "openai" \
+        "anthropic" \
+        "neo4j" \
+        "pyyaml"
 
 # Neo4j settings
 ENV NEO4J_PLUGINS='["graph-data-science"]'
