@@ -118,6 +118,14 @@ function normalizeIngressPath(req, res, next) {
 
 app.use(normalizeIngressPath)
 
+function htmlAttr(value) {
+  return String(value)
+    .replace(/&/g, '&amp;')
+    .replace(/"/g, '&quot;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+}
+
 const db = new Database(DATABASE_PATH)
 db.pragma('journal_mode = WAL')
 db.exec(`
@@ -771,7 +779,10 @@ if (fs.existsSync(distPath)) {
     const ingressPath = String(req.ingressBase || req.headers['x-ingress-path'] || '')
     if (!ingressPath) return res.sendFile(path.join(distPath, 'index.html'))
     const html = fs.readFileSync(path.join(distPath, 'index.html'), 'utf8')
-    return res.send(html.replace('</head>', `<script>window.__BASE__=${JSON.stringify(ingressPath)}</script></head>`))
+    const ingressBase = ingressPath.endsWith('/') ? ingressPath : `${ingressPath}/`
+    return res.send(html
+      .replace('<head>', `<head>\n    <base href="${htmlAttr(ingressBase)}">`)
+      .replace('</head>', `    <script>window.__BASE__=${JSON.stringify(ingressPath.replace(/\/$/, ''))}</script>\n  </head>`))
   })
 }
 

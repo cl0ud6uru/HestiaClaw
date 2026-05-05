@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.10
+
+- Fix blank local ingress page at `/ee1bc088_hestiaclaw` without a trailing slash by injecting an HTML `<base>` tag before relative asset URLs are parsed
+
 ## 1.0.9
 
 - Fix local HA ingress paths that are forwarded to the add-on with the `/ee1bc088_hestiaclaw` prefix still attached; the server now strips HA ingress prefixes before route matching, and the frontend falls back to the current path prefix when `X-Ingress-Path` is missing
