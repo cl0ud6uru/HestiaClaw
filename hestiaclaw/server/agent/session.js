@@ -299,6 +299,16 @@ export class AgentSession {
     })()
   }
 
+  clearAllConversations() {
+    this._db.transaction(() => {
+      this._db.prepare('DELETE FROM agent_run_events').run()
+      this._db.prepare('DELETE FROM agent_tool_calls').run()
+      this._db.prepare('DELETE FROM agent_runs').run()
+      this._db.prepare('DELETE FROM agent_messages').run()
+      this._db.prepare('DELETE FROM agent_conversation_summaries').run()
+    })()
+  }
+
   _summarizeMessages(rows) {
     const lines = []
     for (const row of rows) {

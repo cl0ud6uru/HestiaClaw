@@ -463,6 +463,15 @@ export default function App() {
     setIsThinking(false)
   }
 
+  const clearAllConversations = () => {
+    fetch('/api/agent/conversations', { method: 'DELETE' }).catch(() => {})
+    cancelSpeechPlayback()
+    const fresh = createConversation()
+    setConversations([fresh])
+    setActiveId(fresh.id)
+    setIsThinking(false)
+  }
+
   const deleteConversation = (id) => {
     fetch(`/api/agent/conversations/${id}`, { method: 'DELETE' }).catch(() => {})
     setConversations(prev => {
@@ -1031,6 +1040,7 @@ export default function App() {
         onNew={startNewChat}
         onSelect={selectConversation}
         onDelete={deleteConversation}
+        onClearAll={clearAllConversations}
         isOpen={sidebarOpen}
         onToggle={() => setSidebarOpen(o => !o)}
         agentMode={agentMode}

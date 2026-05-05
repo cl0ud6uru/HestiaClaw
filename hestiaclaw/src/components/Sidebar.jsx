@@ -11,7 +11,7 @@ function relativeDate(ts) {
   return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
 }
 
-export default function Sidebar({ conversations, activeId, onNew, onSelect, onDelete, isOpen, onToggle, agentMode, onAgentModeChange }) {
+export default function Sidebar({ conversations, activeId, onNew, onSelect, onDelete, onClearAll, isOpen, onToggle, agentMode, onAgentModeChange }) {
   const [search, setSearch] = useState('')
   const sorted = [...conversations].sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0))
   const filtered = search.trim()
@@ -104,6 +104,17 @@ export default function Sidebar({ conversations, activeId, onNew, onSelect, onDe
       <div className="sidebar-footer">
         <span>HestiaClaw</span>
         <span>{conversations.length} SESSION{conversations.length !== 1 ? 'S' : ''}</span>
+        {conversations.length > 0 && (
+          <button
+            className="clear-all-btn"
+            onClick={() => {
+              if (window.confirm('Delete all conversations? This cannot be undone.')) onClearAll()
+            }}
+            title="Delete all conversations"
+          >
+            CLEAR ALL
+          </button>
+        )}
       </div>
     </aside>
   )

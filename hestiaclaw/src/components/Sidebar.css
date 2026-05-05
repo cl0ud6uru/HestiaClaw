@@ -291,13 +291,33 @@
 .sidebar-footer {
   flex-shrink: 0;
   display: flex;
+  flex-wrap: wrap;
   justify-content: space-between;
+  align-items: center;
+  gap: 4px;
   padding: 8px 14px;
   border-top: 1px solid rgba(0, 180, 255, 0.1);
   font-family: 'Orbitron', sans-serif;
   font-size: 0.42rem;
   letter-spacing: 0.15em;
   color: rgba(0, 180, 255, 0.25);
+}
+
+.clear-all-btn {
+  background: none;
+  border: 1px solid rgba(255, 60, 60, 0.3);
+  color: rgba(255, 80, 80, 0.5);
+  font-family: 'Orbitron', sans-serif;
+  font-size: 0.4rem;
+  letter-spacing: 0.12em;
+  padding: 2px 6px;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s;
+}
+
+.clear-all-btn:hover {
+  border-color: rgba(255, 60, 60, 0.7);
+  color: rgba(255, 80, 80, 0.9);
 }
 
 @media (max-width: 768px) {

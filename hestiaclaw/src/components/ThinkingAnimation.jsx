@@ -4,7 +4,7 @@ export default function ThinkingAnimation({ activeTool }) {
   return (
     <div className="thinking-wrapper">
       <div className="thinking-avatar">
-        <span>J</span>
+        <span>H</span>
       </div>
       <div className="thinking-hud">
         <span className="hud-corner tl" />
