@@ -11,7 +11,11 @@ import sys
 from pathlib import Path
 from typing import Any, Optional
 
-from dotenv import load_dotenv
+try:
+    from dotenv import load_dotenv
+    _has_dotenv = True
+except ImportError:
+    _has_dotenv = False
 from graphiti_core import Graphiti
 from graphiti_core.edges import EntityEdge
 from graphiti_core.nodes import EpisodeType, EpisodicNode
@@ -35,14 +39,14 @@ from services.factories import DatabaseDriverFactory, EmbedderFactory, LLMClient
 from services.queue_service import QueueService
 from utils.formatting import format_fact_result
 
-# Load .env file from mcp_server directory
-mcp_server_dir = Path(__file__).parent.parent
-env_file = mcp_server_dir / '.env'
-if env_file.exists():
-    load_dotenv(env_file)
-else:
-    # Try current working directory as fallback
-    load_dotenv()
+# Load .env file if dotenv is available (env vars are set by run.sh in container)
+if _has_dotenv:
+    mcp_server_dir = Path(__file__).parent.parent
+    env_file = mcp_server_dir / '.env'
+    if env_file.exists():
+        load_dotenv(env_file)
+    else:
+        load_dotenv()
 
 
 # Semaphore limit for concurrent Graphiti operations.

@@ -19,9 +19,6 @@ ENV NEO4J_dbms_memory_heap_max__size=1G
 ENV NEO4J_dbms_memory_pagecache_size=512m
 ENV NEO4J_dbms_security_auth__lock__time=0
 
-# Ensure python-dotenv is in the venv (may be system-installed in the source image)
-RUN /app/mcp/.venv/bin/pip install --no-cache-dir python-dotenv
-
 # Patch the MCP server to bind on 0.0.0.0 for cross-container access
 COPY graphiti_mcp_server.py /app/mcp/src/graphiti_mcp_server.py
 
