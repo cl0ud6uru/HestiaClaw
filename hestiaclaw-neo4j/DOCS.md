@@ -1,4 +1,8 @@
-# HestiaClaw Neo4j
+# HestiaClaw Neo4j (Deprecated)
+
+> **This add-on is no longer needed.** Neo4j is now built into the HestiaClaw Graphiti add-on. Install that instead and uninstall this one.
+
+---
 
 Neo4j Community Edition 2026 with the Graph Data Science (GDS) plugin pre-installed. Used by HestiaClaw for knowledge graph storage and community detection.
 

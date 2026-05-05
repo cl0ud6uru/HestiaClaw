@@ -1,7 +1,7 @@
 name: HestiaClaw Graphiti
-version: "1.0.6"
+version: "2.0.0"
 slug: hestiaclaw_graphiti
-description: "Graphiti MCP server for HestiaClaw long-term memory. neo4j_password MUST match the password set in the HestiaClaw Neo4j add-on."
+description: Graphiti MCP server with built-in Neo4j. One add-on for long-term memory — no separate Neo4j add-on needed.
 url: https://github.com/cl0ud6uru/hestiaclaw
 arch:
   - amd64
@@ -10,7 +10,7 @@ arch:
 startup: services
 boot: auto
 init: false
-timeout: 60
+timeout: 300
 
 host_network: true
 
@@ -18,18 +18,14 @@ map:
   - data:rw
 
 options:
-  neo4j_uri: "bolt://localhost:7687"
-  neo4j_user: "neo4j"
-  neo4j_password: "changeme"
+  password: "changeme"
   llm_provider: "openai"
   llm_model: "gpt-4o-mini"
   openai_api_key: ""
   anthropic_api_key: ""
 
 schema:
-  neo4j_uri: str
-  neo4j_user: str
-  neo4j_password: password
+  password: password
   llm_provider: list(openai|anthropic)
   llm_model: str
   openai_api_key: password

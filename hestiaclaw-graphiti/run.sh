@@ -2,24 +2,44 @@
 set -e
 
 OPTIONS=/data/options.json
-
 opt() { jq -r --arg k "$1" '.[$k] // ""' "$OPTIONS"; }
 
-NEO4J_URI=$(opt neo4j_uri)
-NEO4J_USER=$(opt neo4j_user)
-NEO4J_PASSWORD=$(opt neo4j_password)
+PASSWORD=$(opt password)
+PASSWORD="${PASSWORD:-changeme}"
 LLM_PROVIDER=$(opt llm_provider)
 LLM_MODEL=$(opt llm_model)
 OPENAI_API_KEY=$(opt openai_api_key)
 ANTHROPIC_API_KEY=$(opt anthropic_api_key)
 
-export NEO4J_URI="${NEO4J_URI:-bolt://localhost:7687}"
-export NEO4J_USER="${NEO4J_USER:-neo4j}"
-export NEO4J_PASSWORD
+# --- Neo4j ---
+export NEO4J_AUTH="neo4j/${PASSWORD}"
+export NEO4J_dbms_security_auth__lock__time=0
+export NEO4J_HOME=/data/neo4j
+mkdir -p /data/neo4j
+
+echo "Starting Neo4j..."
+neo4j console &
+
+echo "Waiting for Neo4j bolt port..."
+retries=0
+until nc -z localhost 7687 2>/dev/null; do
+  retries=$((retries + 1))
+  if [ $retries -ge 120 ]; then
+    echo "Neo4j not ready after 120s, exiting"
+    exit 1
+  fi
+  sleep 1
+done
+echo "Neo4j port open — waiting 10s for full initialization..."
+sleep 10
+
+# --- Graphiti ---
+export NEO4J_URI="bolt://localhost:7687"
+export NEO4J_USER="neo4j"
+export NEO4J_PASSWORD="${PASSWORD}"
 export OPENAI_API_KEY
 export ANTHROPIC_API_KEY
 
-# Write graphiti config to /data so it persists and can be inspected
 mkdir -p /data
 cat > /data/graphiti_config.yaml << EOF
 server:
@@ -81,23 +101,5 @@ graphiti:
       description: "Physical items, tools, devices, or possessions"
 EOF
 
-# Wait for Neo4j to accept connections before starting
-NEO4J_HOST=$(echo "${NEO4J_URI}" | sed 's|bolt://||' | cut -d: -f1)
-NEO4J_PORT=$(echo "${NEO4J_URI}" | sed 's|bolt://||' | cut -d: -f2)
-NEO4J_PORT="${NEO4J_PORT:-7687}"
-echo "Waiting for Neo4j at ${NEO4J_HOST}:${NEO4J_PORT}..."
-retries=0
-until nc -z "${NEO4J_HOST}" "${NEO4J_PORT}" 2>/dev/null; do
-  retries=$((retries + 1))
-  if [ $retries -ge 60 ]; then
-    echo "Neo4j not reachable after 60s, starting anyway"
-    break
-  fi
-  sleep 1
-done
-# Port is open but Neo4j needs a few more seconds to finish auth initialization
-echo "Neo4j port open, waiting 10s for full initialization..."
-sleep 10
-echo "Starting Graphiti"
-
+echo "Starting Graphiti MCP server..."
 exec /app/mcp/.venv/bin/python /app/mcp/src/graphiti_mcp_server.py --config /data/graphiti_config.yaml
