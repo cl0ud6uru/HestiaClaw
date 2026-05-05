@@ -98,6 +98,16 @@ logging.getLogger('mcp.server.streamable_http_manager').setLevel(
 )  # Reduce MCP noise
 
 
+class EquivalentSchemaRuleFilter(logging.Filter):
+    """Suppress Neo4j 2026 duplicate-index noise from graphiti-core startup."""
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        return 'EquivalentSchemaRuleAlreadyExists' not in record.getMessage()
+
+
+logging.getLogger('graphiti_core.driver.neo4j_driver').addFilter(EquivalentSchemaRuleFilter())
+
+
 # Patch uvicorn's logging config to use our format
 def configure_uvicorn_logging():
     """Configure uvicorn loggers to match our format after they're created."""
@@ -284,7 +294,13 @@ class GraphitiService:
                 raise
 
             # Build indices
-            await self.client.build_indices_and_constraints()
+            try:
+                await self.client.build_indices_and_constraints()
+            except Exception as index_error:
+                if 'EquivalentSchemaRuleAlreadyExists' in str(index_error):
+                    logger.info('Graphiti indices already exist; continuing startup')
+                else:
+                    raise
 
             logger.info('Successfully initialized Graphiti client')
 
@@ -936,10 +952,6 @@ async def run_mcp_server():
         logger.info(f'  Base URL: http://{display_host}:{mcp.settings.port}/')
         logger.info(f'  MCP Endpoint: http://{display_host}:{mcp.settings.port}/mcp/')
         logger.info('  Transport: HTTP (streamable)')
-
-        # Show FalkorDB Browser UI access if enabled
-        if os.environ.get('BROWSER', '1') == '1':
-            logger.info(f'  FalkorDB Browser UI: http://{display_host}:3000/')
 
         logger.info('=' * 60)
         logger.info('For MCP clients, connect to the /mcp/ endpoint above')
