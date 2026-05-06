@@ -69,6 +69,8 @@ export default function AgentPanel({ activeConversationTitle, onClose, onForkCon
   const [models, setModels] = useState([])
   const [modelsLoading, setModelsLoading] = useState(false)
   const [expandedSources, setExpandedSources] = useState(new Set())
+  const [expandedRunId, setExpandedRunId] = useState(null)
+  const [runEventsCache, setRunEventsCache] = useState({})
   const [soul, setSoul] = useState('')
   const [savingSoul, setSavingSoul] = useState(false)
   const [soulMsg, setSoulMsg] = useState('')
@@ -98,6 +100,26 @@ export default function AgentPanel({ activeConversationTitle, onClose, onForkCon
       setModels([])
     } finally {
       setModelsLoading(false)
+    }
+  }
+
+  const fetchRunEvents = async (runId) => {
+    if (runEventsCache[runId]) return
+    try {
+      const res = await fetch(`/api/agent/runs/${encodeURIComponent(runId)}/events`)
+      if (res.ok) {
+        const json = await res.json()
+        setRunEventsCache(prev => ({ ...prev, [runId]: json.events || [] }))
+      }
+    } catch { /* non-critical */ }
+  }
+
+  const toggleRunExpanded = (runId) => {
+    if (expandedRunId === runId) {
+      setExpandedRunId(null)
+    } else {
+      setExpandedRunId(runId)
+      void fetchRunEvents(runId)
     }
   }
 
@@ -345,13 +367,43 @@ export default function AgentPanel({ activeConversationTitle, onClose, onForkCon
             <div className="agent-panel__section-title">Recent Runs</div>
             <div className="agent-panel__list">
               {(data.recentRuns || []).map(run => (
-                <div className="agent-panel__row" key={run.id}>
-                  <div>
-                    <strong>{formatTime(run.startedAt)}</strong>
-                    <span>{run.provider} / {run.model || 'default'} · {run.toolCallCount} tools</span>
-                    {run.error && <em>{run.error}</em>}
+                <div key={run.id}>
+                  <div
+                    className="agent-panel__row agent-panel__row--clickable"
+                    onClick={() => toggleRunExpanded(run.id)}
+                  >
+                    <div>
+                      <strong>{formatTime(run.startedAt)}</strong>
+                      <span>{run.provider} / {run.model || 'default'} · {run.toolCallCount} tools</span>
+                      {run.error && <em>{run.error}</em>}
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      <b className={`agent-panel__status agent-panel__status--${run.status}`}>{run.status}</b>
+                      <span className="agent-panel__expand-icon">{expandedRunId === run.id ? '▲' : '▼'}</span>
+                    </div>
                   </div>
-                  <b className={`agent-panel__status agent-panel__status--${run.status}`}>{run.status}</b>
+                  {expandedRunId === run.id && (
+                    <div className="agent-panel__run-events">
+                      {!runEventsCache[run.id]
+                        ? <div className="agent-panel__empty">Loading…</div>
+                        : runEventsCache[run.id].length === 0
+                          ? <div className="agent-panel__empty">No events recorded.</div>
+                          : runEventsCache[run.id].map(ev => (
+                            <div key={ev.id} className={`agent-panel__run-event agent-panel__run-event--${ev.type}`}>
+                              <span className="agent-panel__run-event-type">{ev.type}</span>
+                              <span className="agent-panel__run-event-detail">
+                                {ev.type === 'model_start' && `iteration ${ev.data.iteration}`}
+                                {ev.type === 'model_end' && `${ev.data.toolCallCount ?? 0} tools · ${ev.data.textLen ?? 0} chars`}
+                                {ev.type === 'tool_start' && (ev.data.toolName || ev.data.name || '')}
+                                {ev.type === 'tool_end' && (ev.data.success === false ? 'error' : `${ev.data.resultLen ?? 0} chars`)}
+                                {ev.type === 'run_error' && (ev.data.message || '')}
+                                {ev.type === 'run_start' && `${ev.data.provider} / ${ev.data.model || 'default'} · ${ev.data.toolCount ?? 0} tools`}
+                              </span>
+                            </div>
+                          ))
+                      }
+                    </div>
+                  )}
                 </div>
               ))}
               {!data.recentRuns?.length && <div className="agent-panel__empty">No agent runs recorded yet.</div>}

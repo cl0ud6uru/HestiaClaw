@@ -5,7 +5,7 @@ import { OpenAIProvider } from './providers/openai.js'
 import { summarizeToolResult } from './context/tool-result-summarizer.js'
 import { generateSummary } from './context/summarizer.js'
 
-const MAX_ITERATIONS = 10
+const MAX_ITERATIONS = 25
 const DEFAULT_CONTEXT_MAX_MESSAGES = 40
 
 export function readDailyNotes(notesDir) {

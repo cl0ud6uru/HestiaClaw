@@ -94,6 +94,9 @@ export class AgentSession {
     this._updateToolCall = db.prepare(
       'UPDATE agent_tool_calls SET result = ?, error = ?, completed_at = ? WHERE run_id = ? AND tool_call_id = ?',
     )
+    this._getRunEvents = db.prepare(
+      'SELECT id, type, data, created_at AS createdAt FROM agent_run_events WHERE run_id = ? ORDER BY id ASC',
+    )
     this._getRunsWithTools = db.prepare(`
       SELECT r.id, r.started_at, t.name AS tool_name
       FROM agent_runs r
@@ -162,7 +165,8 @@ export class AgentSession {
     const message = (() => {
       try {
         const parsed = JSON.parse(row.content)
-        if (parsed && typeof parsed === 'object' && !Array.isArray(parsed) && parsed.role) {
+        if (parsed && typeof parsed === 'object' && !Array.isArray(parsed) &&
+            (parsed.role || parsed.type === 'function_call' || parsed.type === 'function_call_output')) {
           return parsed
         }
         return { role: row.role, content: parsed === null || parsed === undefined ? '' : parsed }
@@ -175,6 +179,8 @@ export class AgentSession {
 
   _isValidMessage(message) {
     if (!message || typeof message !== 'object' || Array.isArray(message)) return false
+    // OpenAI Responses API items use `type` instead of `role`
+    if (message.type === 'function_call' || message.type === 'function_call_output') return true
     if (typeof message.role !== 'string') return false
     if (!['system', 'user', 'assistant', 'tool'].includes(message.role)) return false
     if (message.role === 'tool' && !message.tool_call_id) return false
@@ -258,6 +264,15 @@ export class AgentSession {
 
   finishToolCall(runId, { id, result = null, error = null }) {
     this._updateToolCall.run(result === null ? null : String(result), error, Date.now(), runId, id || null)
+  }
+
+  getRunEvents(runId) {
+    return this._getRunEvents.all(runId).map(row => ({
+      id: row.id,
+      type: row.type,
+      data: (() => { try { return JSON.parse(row.data || '{}') } catch { return {} } })(),
+      createdAt: row.createdAt,
+    }))
   }
 
   getRecentRuns(limit = 10) {

@@ -230,6 +230,12 @@ export function createAgentRouter({ provider, session, registry, systemPrompt, m
     res.json({ runs: session.getRecentRuns(Number(req.query.limit) || 20) })
   })
 
+  router.get('/runs/:runId/events', (req, res) => {
+    const runId = String(req.params.runId || '').trim()
+    if (!runId) return res.status(400).json({ error: 'runId is required.' })
+    res.json({ events: session.getRunEvents(runId) })
+  })
+
   router.get('/approvals', (req, res) => {
     res.json({ approvals: approvals?.listPending() || [] })
   })

@@ -757,6 +757,9 @@ export default function App() {
             if (/graphiti|memory/i.test(event.name)) setMemoryPulseAt(Date.now())
             if (!toolCallsAccum.find(t => t.name === displayName)) {
               toolCallsAccum.push({ name: displayName, type: 'subagent' })
+              updateMessages(convId, prev =>
+                prev.map(m => m.id === assistantId ? { ...m, toolCalls: [...toolCallsAccum] } : m),
+              )
             }
           } else if (event.type === 'approval_required') {
             const displayName = event.name.replace(/__/g, ': ')
@@ -829,6 +832,7 @@ export default function App() {
       setIsThinking(false)
     } catch (err) {
       setActiveToolName(null)
+      const errToolCalls = toolCallsAccum.length ? [...toolCallsAccum] : undefined
       updateMessages(convId, prev =>
         prev.filter(m => m.id !== assistantId).concat({
           id: assistantId,
@@ -836,6 +840,7 @@ export default function App() {
           content: `Systems error: ${err.message}`,
           streaming: false,
           isError: true,
+          toolCalls: errToolCalls,
         }),
       )
       setIsThinking(false)

@@ -455,6 +455,63 @@
   font-size: 0.88rem;
 }
 
+.agent-panel__row--clickable {
+  cursor: pointer;
+  user-select: none;
+}
+.agent-panel__row--clickable:hover {
+  background: rgba(0, 212, 255, 0.06);
+}
+
+.agent-panel__expand-icon {
+  font-size: 0.6rem;
+  color: rgba(0, 212, 255, 0.5);
+}
+
+.agent-panel__run-events {
+  margin: 2px 0 6px 0;
+  padding: 6px 10px;
+  background: rgba(0, 4, 18, 0.6);
+  border-left: 2px solid rgba(0, 212, 255, 0.2);
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.agent-panel__run-event {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 0.82rem;
+  padding: 2px 0;
+}
+
+.agent-panel__run-event-type {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 0.52rem;
+  letter-spacing: 0.08em;
+  color: rgba(0, 212, 255, 0.6);
+  flex-shrink: 0;
+  min-width: 80px;
+}
+
+.agent-panel__run-event--tool_start .agent-panel__run-event-type,
+.agent-panel__run-event--tool_end .agent-panel__run-event-type {
+  color: #00ffaa;
+}
+
+.agent-panel__run-event--run_error .agent-panel__run-event-type {
+  color: #ff6b6b;
+}
+
+.agent-panel__run-event-detail {
+  color: rgba(196, 232, 255, 0.85);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 @media (max-width: 680px) {
   .agent-panel {
     right: 16px;
