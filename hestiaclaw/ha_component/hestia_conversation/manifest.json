@@ -1,0 +1,11 @@
+{
+  "domain": "hestia_conversation",
+  "name": "Hestia Conversation",
+  "version": "1.0.0",
+  "codeowners": [],
+  "dependencies": ["conversation"],
+  "documentation": "https://github.com/cl0ud6uru/hestiaclaw",
+  "integration_type": "service",
+  "iot_class": "local_polling",
+  "requirements": []
+}

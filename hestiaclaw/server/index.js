@@ -14,6 +14,7 @@ import helmet from 'helmet'
 import neo4j from 'neo4j-driver'
 import { createAgentRouter } from './agent/index.js'
 import { createWebhookRouter } from './agent/webhook.js'
+import { createVoiceAgentRouter } from './agent/voice.js'
 import { ApprovalManager } from './agent/approvals.js'
 import { AgentEventBus } from './agent/events.js'
 import { createProvider } from './agent/providers/index.js'
@@ -859,6 +860,20 @@ if (agentConfig) {
     })
     app.use('/api/webhook', webhookRouter)
     console.log('[agent] Webhook endpoint active at POST /api/webhook/conversation')
+
+    const voiceAgentRouter = createVoiceAgentRouter({
+      provider,
+      session: agentSession,
+      registry,
+      systemPrompt,
+      events,
+      settings: harnessSettings,
+      memoryPath: MEMORY_PATH,
+      soulPath: SOUL_PATH,
+      notesDir: NOTES_DIR,
+    })
+    app.use('/api/ha-voice', voiceAgentRouter)
+    console.log('[agent] HA voice endpoint active at POST /api/ha-voice/process')
     console.log(`[agent] Harness ready — ${registry.size} tool(s) registered`)
 
     // Daily memory consolidation at 3 AM
