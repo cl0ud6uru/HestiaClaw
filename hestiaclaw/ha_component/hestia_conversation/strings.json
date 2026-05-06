@@ -3,16 +3,14 @@
     "step": {
       "user": {
         "title": "Connect to HestiaClaw",
-        "description": "Enter the URL of your HestiaClaw instance and the voice token shown in the add-on logs.",
+        "description": "Enter the URL of your HestiaClaw instance. If you are running the HestiaClaw addon, this is usually auto-configured for you.",
         "data": {
-          "url": "HestiaClaw URL",
-          "token": "Voice Token (leave empty if no token is set)"
+          "url": "HestiaClaw URL"
         }
       }
     },
     "error": {
-      "cannot_connect": "Cannot connect to HestiaClaw. Make sure the add-on is running.",
-      "invalid_auth": "Invalid voice token. Check HESTIA_VOICE_TOKEN in the add-on logs."
+      "cannot_connect": "Cannot connect to HestiaClaw. Make sure the add-on is running and the URL is correct."
     },
     "abort": {
       "already_configured": "Hestia Conversation is already configured."
