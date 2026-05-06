@@ -39,6 +39,7 @@ options:
   neo4j_user: "neo4j"
   neo4j_password: ""
   ha_token: ""
+  hestia_voice_token: ""
   searxng_url: ""
   session_secret: ""
   admin_username: "admin"
@@ -57,6 +58,7 @@ schema:
   neo4j_user: str
   neo4j_password: str
   ha_token: str
+  hestia_voice_token: password
   searxng_url: str
   session_secret: password
   admin_username: str

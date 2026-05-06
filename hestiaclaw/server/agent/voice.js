@@ -4,6 +4,15 @@ import { runAgentLoop, readDailyNotes } from './loop.js'
 
 export function createVoiceAgentRouter({ provider, session, registry, systemPrompt, events, settings = {}, memoryPath = null, soulPath = null, notesDir = null }) {
   const router = Router()
+  const HESTIA_VOICE_TOKEN = process.env.HESTIA_VOICE_TOKEN || null
+
+  function checkAuth(req, res) {
+    if (!HESTIA_VOICE_TOKEN) return true
+    const auth = req.headers['authorization'] || ''
+    if (auth === `Bearer ${HESTIA_VOICE_TOKEN}`) return true
+    res.status(401).json({ error: 'Unauthorized' })
+    return false
+  }
 
   function makeCollector() {
     let text = ''
@@ -28,6 +37,8 @@ export function createVoiceAgentRouter({ provider, session, registry, systemProm
   // Body: { text, conversation_id?, language? }
   // Response: { speech, conversation_id }
   router.post('/process', async (req, res) => {
+    if (!checkAuth(req, res)) return
+
     const text = String(req.body?.text || '').trim()
     const conversationId = String(req.body?.conversation_id || `ha-${Date.now()}`).trim()
     const language = String(req.body?.language || 'en').trim()

@@ -17,12 +17,13 @@ class HestiaConversationConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         await self.async_set_unique_id(DOMAIN)
         self._abort_if_unique_id_configured(updates={
             CONF_URL: discovery_info.config["url"],
+            CONF_TOKEN: discovery_info.config.get("token", ""),
         })
         return self.async_create_entry(
             title="Hestia",
             data={
                 CONF_URL: discovery_info.config["url"],
-                CONF_TOKEN: "",
+                CONF_TOKEN: discovery_info.config.get("token", ""),
             },
         )
 
@@ -35,20 +36,25 @@ class HestiaConversationConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             self._abort_if_unique_id_configured()
 
             url = user_input[CONF_URL].rstrip("/")
+            token = user_input.get(CONF_TOKEN, "").strip()
+            headers = {"Authorization": f"Bearer {token}"} if token else {}
 
             try:
                 async with aiohttp.ClientSession() as sess:
                     async with sess.post(
                         f"{url}/api/ha-voice/process",
                         json={"text": "ping", "conversation_id": "ha-config-test"},
+                        headers=headers,
                         timeout=aiohttp.ClientTimeout(total=10),
                     ) as resp:
-                        if resp.status >= 400:
+                        if resp.status == 401:
+                            errors["base"] = "invalid_auth"
+                        elif resp.status >= 400:
                             errors["base"] = "cannot_connect"
                         else:
                             return self.async_create_entry(
                                 title="Hestia",
-                                data={CONF_URL: url, CONF_TOKEN: ""},
+                                data={CONF_URL: url, CONF_TOKEN: token},
                             )
             except Exception:  # noqa: BLE001
                 errors["base"] = "cannot_connect"
@@ -58,6 +64,7 @@ class HestiaConversationConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             data_schema=vol.Schema(
                 {
                     vol.Required(CONF_URL, default="http://localhost:3001"): str,
+                    vol.Optional(CONF_TOKEN, default=""): str,
                 }
             ),
             errors=errors,

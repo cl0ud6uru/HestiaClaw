@@ -170,6 +170,20 @@ EOF
 # Symlink into /app so the server finds it
 ln -sf /data/agent.config.json /app/agent.config.json
 
+# HA Voice Agent token — authenticates the HA custom component against this server.
+# Prefer an explicit value from addon config; otherwise generate and persist one.
+HESTIA_VOICE_TOKEN=$(opt hestia_voice_token)
+if [ -z "$HESTIA_VOICE_TOKEN" ]; then
+  TOKEN_FILE=/data/hestia_voice_token
+  if [ -f "$TOKEN_FILE" ]; then
+    HESTIA_VOICE_TOKEN=$(cat "$TOKEN_FILE")
+  else
+    HESTIA_VOICE_TOKEN=$(cat /proc/sys/kernel/random/uuid 2>/dev/null | tr -d '-' || date +%s%N | sha256sum | cut -c1-32)
+    echo "$HESTIA_VOICE_TOKEN" > "$TOKEN_FILE"
+  fi
+fi
+export HESTIA_VOICE_TOKEN
+
 # Install the Hestia Conversation custom component into HA's config directory.
 # Requires config:rw in the addon map. HA Core must be restarted once after first install.
 HA_CUSTOM_COMPONENTS_DIR="/config/custom_components"
@@ -181,17 +195,31 @@ if [ -d "$HA_CUSTOM_COMPONENTS_DIR" ]; then
   echo "[ha-voice] If this is a first-time install, restart Home Assistant Core to activate it."
 
   # Notify HA Core via the Supervisor discovery API so the integration auto-appears.
-  # HA will show a "New integration discovered" notification; user just clicks Configure.
-  DISCOVERY_RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" \
-    -X POST \
-    -H "Authorization: Bearer ${SUPERVISOR_TOKEN}" \
-    -H "Content-Type: application/json" \
-    -d "{\"service\": \"hestia_conversation\", \"config\": {\"url\": \"http://localhost:3001\"}}" \
-    http://supervisor/discovery 2>/dev/null || echo "000")
-  if [ "$DISCOVERY_RESPONSE" = "200" ] || [ "$DISCOVERY_RESPONSE" = "201" ]; then
-    echo "[ha-voice] Supervisor discovery registered — HA will prompt to configure Hestia Conversation."
-  else
-    echo "[ha-voice] Supervisor discovery returned HTTP ${DISCOVERY_RESPONSE} (may already be registered, or HA not ready yet)."
+  # Retry with exponential backoff — HA Core may not be fully ready at addon startup.
+  DISCOVERY_BODY="{\"service\": \"hestia_conversation\", \"config\": {\"url\": \"http://localhost:3001\", \"token\": \"${HESTIA_VOICE_TOKEN}\"}}"
+  _delay=2
+  _attempt=1
+  _max_attempts=5
+  _discovered=0
+  while [ "$_attempt" -le "$_max_attempts" ]; do
+    _code=$(curl -s -o /dev/null -w "%{http_code}" \
+      -X POST \
+      -H "Authorization: Bearer ${SUPERVISOR_TOKEN}" \
+      -H "Content-Type: application/json" \
+      -d "$DISCOVERY_BODY" \
+      http://supervisor/discovery 2>/dev/null || echo "000")
+    if [ "$_code" = "200" ] || [ "$_code" = "201" ]; then
+      echo "[ha-voice] Supervisor discovery registered (attempt ${_attempt}) — HA will prompt to configure Hestia Conversation."
+      _discovered=1
+      break
+    fi
+    echo "[ha-voice] Discovery attempt ${_attempt}/${_max_attempts} returned HTTP ${_code}, retrying in ${_delay}s..."
+    sleep "$_delay"
+    _delay=$((_delay * 2))
+    _attempt=$((_attempt + 1))
+  done
+  if [ "$_discovered" = "0" ]; then
+    echo "[ha-voice] Supervisor discovery failed after ${_max_attempts} attempts. Restart the addon to retry."
   fi
 else
   echo "[ha-voice] /config not mounted — skipping custom component install (config:rw map required)"
