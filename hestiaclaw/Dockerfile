@@ -44,6 +44,7 @@ RUN npm ci --omit=dev
 COPY --from=builder /app/dist ./dist
 COPY server ./server
 COPY skills ./skills
+COPY ha_component ./ha_component
 
 COPY run.sh /run.sh
 RUN chmod +x /run.sh
