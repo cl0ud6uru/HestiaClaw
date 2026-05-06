@@ -772,14 +772,28 @@ export default function App() {
               kind: event.kind,
               streaming: false,
             }])
+            // Race user decision against the server-side approval timeout + 2s buffer.
+            // If the server times out first it moves on; without this the stream reader
+            // would block forever waiting for a button click that never comes.
+            let approvalTimeoutHandle
             const approved = await new Promise(resolve => {
               approvalResolvers.current[event.approvalId] = { resolve, convId }
+              approvalTimeoutHandle = setTimeout(() => {
+                if (approvalResolvers.current[event.approvalId]) {
+                  delete approvalResolvers.current[event.approvalId]
+                  updateMessages(convId, prev => prev.filter(m => m.id !== `approval-${event.approvalId}`))
+                  resolve(null) // null = timed out, server already moved on
+                }
+              }, (event.timeoutMs || 60000) + 2000)
             })
-            await resolveToolApproval(
-              event.approvalId,
-              approved,
-              approved ? '' : 'Denied by user.',
-            )
+            clearTimeout(approvalTimeoutHandle)
+            if (approved !== null) {
+              await resolveToolApproval(
+                event.approvalId,
+                approved,
+                approved ? '' : 'Denied by user.',
+              )
+            }
           } else if (event.type === 'config_changed') {
             setAgentConfigVersion(v => v + 1)
           } else if (event.type === 'tool_end') {

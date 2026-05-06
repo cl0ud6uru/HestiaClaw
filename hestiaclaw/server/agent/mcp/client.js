@@ -213,7 +213,7 @@ export class McpClientManager {
   }
 
   _requiresApproval(toolName) {
-    return this._inferToolRisk(toolName) !== 'low'
+    return this._inferToolRisk(toolName) === 'high'
   }
 
   _resolveEnv(envMap) {
