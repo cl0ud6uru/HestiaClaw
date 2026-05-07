@@ -5,7 +5,7 @@
 // scores and reasons. The scoring is deterministic and explainable so that
 // the orchestrator can refuse to act on a low-confidence guess.
 
-import { searchEntities } from './mcp-bridge.js'
+import { listEntities, searchEntities } from './mcp-bridge.js'
 
 const STOPWORDS = new Set([
   'the', 'a', 'an', 'in', 'on', 'at', 'to', 'of', 'and', 'or',
@@ -181,6 +181,18 @@ function classifyConfidence(score, candidates) {
   return 'none'
 }
 
+function scoreEntities(entities, { target, area, domain, domainHints }) {
+  return entities
+    .map(entity => {
+      const { score, reasons } = scoreCandidate({ entity, target, area, domain, domainHints })
+      return { ...entity, score, reasons }
+    })
+    // When the caller supplies an explicit domain hint, exclude wrong-domain
+    // matches outright — they should not show up as alternatives.
+    .filter(c => c.score > 0 && (!domain || c.domain === domain))
+    .sort((a, b) => b.score - a.score)
+}
+
 export async function resolveTarget(registry, {
   target = '',
   area = null,
@@ -192,19 +204,23 @@ export async function resolveTarget(registry, {
   // appears in the inventory (so we can attach state and detect typos).
   if (entity_id) {
     const lookup = await searchEntities(registry, { query: entity_id })
-    const exact = lookup.entities.find(e => e.entity_id === entity_id)
+    const inventory = lookup.entities.length > 0
+      ? lookup
+      : await listEntities(registry, { domain })
+    const exact = inventory.entities.find(e => e.entity_id === entity_id)
     if (exact) {
       return {
         confidence: 'high',
         candidates: [{ ...exact, score: 200, reasons: ['caller_provided_entity_id'] }],
         domainHints: domain ? [domain] : inferDomainHints(target),
-        searchAvailable: lookup.available,
+        searchAvailable: lookup.available || inventory.available,
+        inventoryFallback: lookup.entities.length === 0 && inventory.available,
       }
     }
     // Caller-provided entity_id but search didn't return it. Surface as a
     // single low-confidence candidate so the orchestrator can decide.
     return {
-      confidence: lookup.available ? 'low' : 'medium',
+      confidence: (lookup.available || inventory.available) ? 'low' : 'medium',
       candidates: [{
         entity_id,
         domain: entity_id.split('.')[0],
@@ -212,11 +228,12 @@ export async function resolveTarget(registry, {
         area: null,
         state: null,
         attributes: {},
-        score: lookup.available ? 30 : 80,
-        reasons: lookup.available ? ['caller_provided_entity_id', 'not_found_in_search'] : ['caller_provided_entity_id', 'search_unavailable'],
+        score: (lookup.available || inventory.available) ? 30 : 80,
+        reasons: (lookup.available || inventory.available) ? ['caller_provided_entity_id', 'not_found_in_inventory'] : ['caller_provided_entity_id', 'search_unavailable'],
       }],
       domainHints: domain ? [domain] : inferDomainHints(target),
-      searchAvailable: lookup.available,
+      searchAvailable: lookup.available || inventory.available,
+      inventoryFallback: lookup.entities.length === 0 && inventory.available,
     }
   }
 
@@ -224,20 +241,17 @@ export async function resolveTarget(registry, {
   const queryParts = uniq([target, area].filter(Boolean).map(String))
   const query = queryParts.join(' ').trim()
   const lookup = await searchEntities(registry, { query, area, domain })
-  if (!lookup.available) {
+  const inventory = lookup.entities.length > 0
+    ? null
+    : await listEntities(registry, { area, domain })
+  const entities = lookup.entities.length > 0 ? lookup.entities : (inventory?.entities || [])
+  const searchAvailable = lookup.available || Boolean(inventory?.available)
+
+  if (!searchAvailable) {
     return { confidence: 'none', candidates: [], domainHints, searchAvailable: false }
   }
 
-  const scored = lookup.entities
-    .map(entity => {
-      const { score, reasons } = scoreCandidate({ entity, target, area, domain, domainHints })
-      return { ...entity, score, reasons }
-    })
-    // When the caller supplies an explicit domain hint, exclude wrong-domain
-    // matches outright — they should not show up as alternatives.
-    .filter(c => c.score > 0 && (!domain || c.domain === domain))
-    .sort((a, b) => b.score - a.score)
-
+  const scored = scoreEntities(entities, { target, area, domain, domainHints })
   const top = scored.slice(0, limit)
   const confidence = classifyConfidence(top[0]?.score || 0, top)
   return {
@@ -245,6 +259,7 @@ export async function resolveTarget(registry, {
     candidates: top,
     domainHints,
     searchAvailable: true,
-    totalConsidered: lookup.entities.length,
+    inventoryFallback: lookup.entities.length === 0 && Boolean(inventory?.available),
+    totalConsidered: entities.length,
   }
 }

@@ -17,6 +17,9 @@ export class ToolRegistry {
       timeoutMs: Number(metadata.timeoutMs) || null,
       injectConversationId: metadata.injectConversationId === true,
       internalOnly: metadata.internalOnly === true,
+      nativeName: metadata.nativeName || null,
+      serverName: metadata.serverName || metadata.source || null,
+      role: metadata.role || null,
     })
   }
 
@@ -38,6 +41,9 @@ export class ToolRegistry {
       requiresApproval: tool.requiresApproval,
       timeoutMs: tool.timeoutMs,
       internalOnly: tool.internalOnly,
+      nativeName: tool.nativeName,
+      serverName: tool.serverName,
+      role: tool.role,
     }
   }
 
@@ -64,6 +70,9 @@ export class ToolRegistry {
       requiresApproval,
       timeoutMs,
       internalOnly,
+      nativeName,
+      serverName,
+      role,
     }) => ({
       name,
       description,
@@ -75,6 +84,9 @@ export class ToolRegistry {
       requiresApproval,
       timeoutMs,
       internalOnly,
+      nativeName,
+      serverName,
+      role,
     }))
   }
 

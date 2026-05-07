@@ -2,7 +2,7 @@ import { Router } from 'express'
 import { readFile, writeFile, mkdir, rm } from 'node:fs/promises'
 import { readFileSync, writeFileSync } from 'node:fs'
 import { join, resolve, relative, isAbsolute } from 'node:path'
-import { runAgentLoop, readDailyNotes } from './loop.js'
+import { runAgentLoop, readDailyNotes, startStreamingResponse } from './loop.js'
 import { createProvider } from './providers/index.js'
 import { loadSkills, parseSkillManifest } from './skills.js'
 import { loadHistory, writeMemory } from './memory-history-store.js'
@@ -31,10 +31,7 @@ export function createAgentRouter({ provider, session, registry, systemPrompt, m
       return res.status(400).json({ error: 'message and conversation_id are required.' })
     }
 
-    res.setHeader('Content-Type', 'application/x-ndjson')
-    res.setHeader('Transfer-Encoding', 'chunked')
-    res.setHeader('Cache-Control', 'no-cache')
-    res.flushHeaders()
+    startStreamingResponse(res, 'application/x-ndjson')
 
     const skills = await getSkills()
 
@@ -129,7 +126,7 @@ export function createAgentRouter({ provider, session, registry, systemPrompt, m
       })
     } catch (err) {
       console.error('[agent] Unhandled loop error:', err.message)
-      try { res.write(JSON.stringify({ type: 'error', message: err.message || 'Agent error.' }) + '\n') } catch {}
+      try { res.write(JSON.stringify({ type: 'error', message: err.message || 'Agent error.' }) + '\n') } catch { /* response may already be closed */ }
     }
 
     res.end()

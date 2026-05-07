@@ -42,6 +42,31 @@ test('resolveTarget picks light.kitchen_lights for "kitchen lights" — the cano
   assert.ok(['high', 'medium'].includes(result.confidence), `unexpected confidence: ${result.confidence}`)
 })
 
+test('resolveTarget falls back to inventory for "master bedroom lights"', async () => {
+  const registry = new FakeRegistry()
+  registry.register(
+    'addon_ha__Inventory',
+    'inventory',
+    {},
+    async () => JSON.stringify([
+      { entity_id: 'light.master_ceiling', friendly_name: 'Ceiling Light', area: 'Master Bedroom', state: 'off' },
+      { entity_id: 'switch.master_fan', friendly_name: 'Fan', area: 'Master Bedroom', state: 'off' },
+      { entity_id: 'light.guest_lamp', friendly_name: 'Guest Lamp', area: 'Guest Bedroom', state: 'off' },
+    ]),
+    {
+      source: 'addon_ha',
+      serverName: 'addon_ha',
+      role: 'home-assistant',
+      nativeName: 'ha_list_entities',
+      internalOnly: true,
+    },
+  )
+  const result = await resolveTarget(registry, { target: 'master bedroom lights', domain: 'light' })
+  assert.equal(result.inventoryFallback, true)
+  assert.equal(result.candidates[0].entity_id, 'light.master_ceiling')
+  assert.ok(['high', 'medium'].includes(result.confidence), `unexpected confidence: ${result.confidence}`)
+})
+
 test('resolveTarget prefers domain match when ambiguous', async () => {
   const { registry } = buildRegistry([
     { entity_id: 'light.bedroom', area: 'Bedroom' },

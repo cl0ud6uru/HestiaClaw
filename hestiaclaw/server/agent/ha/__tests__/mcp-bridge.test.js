@@ -4,6 +4,7 @@ import {
   parseEntitiesResult,
   parseEntityStateResult,
   searchEntities,
+  listEntities,
   callService,
   isHaMcpAvailable,
 } from '../mcp-bridge.js'
@@ -81,6 +82,51 @@ test('searchEntities returns parsed entities and reports availability', async ()
   assert.equal(result.entities[0].entity_id, 'light.kitchen_lights')
 })
 
+test('searchEntities discovers noncanonical hidden HA tools by metadata', async () => {
+  const registry = new FakeRegistry()
+  registry.register(
+    'addon_ha__LookupThings',
+    'lookup',
+    {},
+    async ({ query }) => JSON.stringify([{ entity_id: 'light.master_lamp', friendly_name: `Master ${query}`, area: 'Master Bedroom', state: 'off' }]),
+    {
+      source: 'addon_ha',
+      serverName: 'addon_ha',
+      role: 'home-assistant',
+      nativeName: 'ha_search_entities',
+      internalOnly: true,
+    },
+  )
+  const result = await searchEntities(registry, { query: 'master bedroom', area: 'Master Bedroom', domain: 'light' })
+  assert.equal(result.available, true)
+  assert.equal(result.entities.length, 1)
+  assert.equal(result.entities[0].entity_id, 'light.master_lamp')
+})
+
+test('listEntities filters metadata-discovered HA inventory locally', async () => {
+  const registry = new FakeRegistry()
+  registry.register(
+    'addon_ha__Inventory',
+    'inventory',
+    {},
+    async () => JSON.stringify([
+      { entity_id: 'light.master_lamp', friendly_name: 'Ceiling Light', area: 'Master Bedroom', state: 'off' },
+      { entity_id: 'switch.master_fan', friendly_name: 'Fan', area: 'Master Bedroom', state: 'off' },
+      { entity_id: 'light.kitchen_lights', friendly_name: 'Kitchen Lights', area: 'Kitchen', state: 'on' },
+    ]),
+    {
+      source: 'addon_ha',
+      serverName: 'addon_ha',
+      role: 'home-assistant',
+      nativeName: 'ha_list_entities',
+      internalOnly: true,
+    },
+  )
+  const result = await listEntities(registry, { area: 'Master Bedroom', domain: 'light' })
+  assert.equal(result.available, true)
+  assert.deepEqual(result.entities.map(e => e.entity_id), ['light.master_lamp'])
+})
+
 test('searchEntities reports unavailable when no search tool is registered', async () => {
   const registry = new FakeRegistry()
   const result = await searchEntities(registry, { query: 'x' })
@@ -102,4 +148,29 @@ test('callService dispatches via the underlying ha-mcp tool', async () => {
   assert.equal(ha.calls.length, 1)
   assert.equal(ha.calls[0].entity_id, 'light.x')
   assert.equal(ha.calls[0].data.brightness_pct, 50)
+})
+
+test('callService discovers noncanonical hidden HA service tool by metadata', async () => {
+  const registry = new FakeRegistry()
+  const calls = []
+  registry.register(
+    'addon_ha__DoService',
+    'call',
+    {},
+    async (input) => {
+      calls.push(input)
+      return 'ok'
+    },
+    {
+      source: 'addon_ha',
+      serverName: 'addon_ha',
+      role: 'home-assistant',
+      nativeName: 'ha_call_service',
+      internalOnly: true,
+    },
+  )
+  assert.equal(isHaMcpAvailable(registry), true)
+  const result = await callService(registry, { domain: 'lock', service: 'lock', entity_id: 'lock.front_door' })
+  assert.equal(result, 'ok')
+  assert.equal(calls[0].entity_id, 'lock.front_door')
 })

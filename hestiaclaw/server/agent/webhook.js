@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { Router } from 'express'
-import { runAgentLoop, readDailyNotes } from './loop.js'
+import { runAgentLoop, readDailyNotes, startStreamingResponse } from './loop.js'
 import { loadSkills } from './skills.js'
 
 function scoreEntity(query, entity) {
@@ -163,10 +163,7 @@ export function createWebhookRouter({ provider, session, registry, systemPrompt,
     }
 
     if (stream) {
-      res.setHeader('Content-Type', 'text/plain')
-      res.setHeader('Transfer-Encoding', 'chunked')
-      res.setHeader('Cache-Control', 'no-cache')
-      res.flushHeaders()
+      startStreamingResponse(res, 'text/plain')
 
       const proxyRes = {
         setHeader() {},

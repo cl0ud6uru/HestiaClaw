@@ -287,17 +287,27 @@ export async function orchestrateHaControl(registry, input = {}, deps = {}) {
   }
 
   if (policy.requiresApproval) {
-    // Defer to the underlying ha-mcp tool which is gated by the agent loop's
-    // approval mechanism. We don't execute here — instead we surface the
-    // structured plan so the model can call the native tool with full intent.
-    return {
-      ok: false,
-      stage: 'requires_approval',
-      resolved: describeCandidate(top),
-      action: callPayload,
-      policy,
-      message: `${callPayload.domain}.${callPayload.service} on ${callPayload.entity_id} is risk="${policy.risk}" and requires user approval. Call the native home-assistant__* MCP tool for ${callPayload.domain}.${callPayload.service} (which is gated by the approval system) instead of ha_control.`,
+    if (typeof deps.requestApproval !== 'function') {
+      return {
+        ok: false,
+        stage: 'requires_approval',
+        resolved: describeCandidate(top),
+        action: callPayload,
+        policy,
+        message: `${callPayload.domain}.${callPayload.service} on ${callPayload.entity_id} is risk="${policy.risk}" and requires user approval, but no approval callback is available.`,
+      }
     }
+    await deps.requestApproval({
+      name: 'ha_control',
+      input: {
+        target: input.target || null,
+        entity_id: top.entity_id,
+        action,
+        service_call: callPayload,
+      },
+      risk: policy.risk,
+      kind: 'write',
+    })
   }
 
   // 4. Read pre-state for verification (optional — failures are non-fatal).

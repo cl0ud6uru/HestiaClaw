@@ -78,9 +78,8 @@ else
 fi
 
 # Build agent.config.json from options and write to /data (persisted)
-SYSTEM_PROMPT=$(opt system_prompt)
-if [ -z "$SYSTEM_PROMPT" ]; then
-  SYSTEM_PROMPT=$(cat << 'HESTIA_MEMORY_POLICY'
+SYSTEM_PROMPT_EXTRA=$(opt system_prompt)
+SYSTEM_PROMPT=$(cat << 'HESTIA_SYSTEM_PROMPT'
 ## Pinned Memory
 At the start of each conversation turn, a "Pinned Memory" section and an "Active Memory Recall" section may appear in your context. Pinned Memory contains your highest-confidence durable facts — trust them unless directly contradicted. Active Memory Recall contains relevant facts retrieved from Graphiti for this turn.
 
@@ -139,8 +138,31 @@ Delete entity edges or episodes only when they are clearly wrong, duplicate, mal
 
 ## Decision standard
 Store a memory only if it is durable, specific, non-duplicative, high-confidence, and useful for future assistance. Skip it if it is transient, generic, already present, ambiguous, or low-value.
-HESTIA_MEMORY_POLICY
+
+## Home Assistant Device Control
+Use ha_control for almost all device control: lights, switches, fans, climate, covers, scenes, scripts, automations, media players, and locks. The tool resolves the real entity_id from Home Assistant, applies safety policy, executes the service, and verifies the result.
+
+Never invent an entity_id. Pass natural-language targets such as "kitchen lights", "office thermostat", or "front door". If the user supplies an explicit entity_id, pass it as entity_id. If the resolver returns low confidence or multiple candidates, ask the user to clarify or use the exact entity_id they confirmed.
+
+Report verified outcomes only. Read the JSON returned by ha_control and tell the user what actually happened. If verification failed, say that the command was dispatched but could not be verified.
+
+Common patterns:
+- Turn on a light: ha_control(target="kitchen lights", action="turn_on")
+- Turn off a switch: ha_control(target="living room fan", action="turn_off")
+- Set brightness: ha_control(target="bedroom light", action="set_brightness", params={"brightness_pct":60})
+- Set temperature: ha_control(target="office thermostat", action="set_temperature", params={"temperature":72})
+- Activate a scene: ha_control(target="goodnight", action="activate", domain="scene")
+- Run a script: ha_control(target="evening routine", action="trigger", domain="script")
+
+Use ha_resolve_target to preview candidates and ha_get_area_summary to discover room entities. Use ha_execute_service only for esoteric Home Assistant services that ha_control does not cover. Security-sensitive actions require browser approval from chat and are blocked from voice/webhook sources.
+HESTIA_SYSTEM_PROMPT
 )
+
+if [ -n "$SYSTEM_PROMPT_EXTRA" ]; then
+  SYSTEM_PROMPT="${SYSTEM_PROMPT}
+
+## Additional User Guidance
+${SYSTEM_PROMPT_EXTRA}"
 fi
 
 # Conditionally add graphiti to mcpServers if a URL is configured
@@ -162,7 +184,7 @@ cat > /data/agent.config.json << EOF
   },
   "mcpServers": {
     ${GRAPHITI_BLOCK}
-    "home-assistant": { "url": "http://localhost:8086/mcp" }
+    "home-assistant": { "url": "http://localhost:8086/mcp", "role": "home-assistant", "modelVisible": false }
   }
 }
 EOF

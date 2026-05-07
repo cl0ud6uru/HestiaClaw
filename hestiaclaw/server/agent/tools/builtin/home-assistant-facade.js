@@ -20,15 +20,8 @@ import {
   orchestrateHaControl,
   orchestrateResolveTarget,
 } from '../../ha/orchestrator.js'
-import { resolveTarget } from '../../ha/resolver.js'
-import { callServiceToolName } from '../../ha/mcp-bridge.js'
-
-const HIGH_RISK_HA_DOMAINS = new Set(['lock', 'alarm_control_panel'])
-const HIGH_RISK_HA_SERVICES = new Set(['unlock', 'lock', 'open', 'close', 'alarm_disarm', 'alarm_trigger'])
-
-function isHighRiskHaAction(domain, service) {
-  return HIGH_RISK_HA_DOMAINS.has(domain) || HIGH_RISK_HA_SERVICES.has(service)
-}
+import { callService, callServiceToolName, listEntities } from '../../ha/mcp-bridge.js'
+import { evaluatePolicy } from '../../ha/policy.js'
 
 function jsonString(value) {
   try { return JSON.stringify(value, null, 2) }
@@ -71,6 +64,7 @@ export function registerHaFacade(registry, options = {}) {
       const result = await orchestrateHaControl(registry, input, {
         approvalsAvailable: sourceApprovals,
         source,
+        requestApproval: context.requestApproval,
       })
       return jsonString(result)
     },
@@ -118,8 +112,8 @@ export function registerHaFacade(registry, options = {}) {
     async ({ area, domain = null, limit = 20 }) => {
       if (!area) return jsonString({ ok: false, message: 'area is required.' })
       const cap = Math.min(Math.max(Number(limit) || 20, 1), 50)
-      const resolution = await resolveTarget(registry, { target: area, area, domain, limit: cap })
-      const entities = resolution.candidates.map(c => ({
+      const inventory = await listEntities(registry, { area, domain })
+      const entities = inventory.entities.slice(0, cap).map(c => ({
         entity_id: c.entity_id,
         name: c.name,
         domain: c.domain,
@@ -132,12 +126,13 @@ export function registerHaFacade(registry, options = {}) {
         byDomain[e.domain] = (byDomain[e.domain] || 0) + 1
       }
       return jsonString({
-        ok: entities.length > 0,
+        ok: inventory.available && entities.length > 0,
         area,
         domain_filter: domain,
         total: entities.length,
         domains: byDomain,
         entities,
+        inventory_available: inventory.available,
       })
     },
     { kind: 'read', risk: 'low', timeoutMs: 10000 },
@@ -161,13 +156,10 @@ export function registerHaFacade(registry, options = {}) {
       },
       required: ['domain', 'service'],
     },
-    async ({ domain, service, entity_id, data, service_data }) => {
+    async ({ domain, service, entity_id, data, service_data }, context = {}) => {
       const callTool = callServiceToolName(registry)
       if (!callTool) {
         return 'Home Assistant service execution is not available — the ha-mcp server may not be connected.'
-      }
-      if (isHighRiskHaAction(domain, service)) {
-        return `${domain}.${service} is a security-sensitive action. Use the native Home Assistant MCP tool for this domain/service — it will prompt for approval before executing.`
       }
       try {
         const resolvedEntityId = entity_id || service_data?.entity_id
@@ -177,13 +169,36 @@ export function registerHaFacade(registry, options = {}) {
           delete rest.entity_id
           if (Object.keys(rest).length) resolvedData = rest
         }
+        const source = context.source || 'chat'
+        const sourceApprovals = context.approvalsAvailable != null
+          ? Boolean(context.approvalsAvailable)
+          : (source === 'chat' ? approvalsAvailable : false)
+        const policy = evaluatePolicy({
+          domain,
+          service,
+          entity_id: resolvedEntityId,
+          source,
+          approvalsAvailable: sourceApprovals,
+        })
+        if (!policy.allowed) return policy.reason
         const input = {
           domain,
           service,
           ...(resolvedEntityId ? { entity_id: resolvedEntityId } : {}),
           ...(resolvedData ? { data: resolvedData } : {}),
         }
-        const result = await registry.execute(callTool, input)
+        if (policy.requiresApproval) {
+          if (typeof context.requestApproval !== 'function') {
+            return `${domain}.${service}${resolvedEntityId ? ` on ${resolvedEntityId}` : ''} requires approval, but no approval callback is available.`
+          }
+          await context.requestApproval({
+            name: 'ha_execute_service',
+            input,
+            risk: policy.risk,
+            kind: 'write',
+          })
+        }
+        const result = await callService(registry, input)
         return result || `${domain}.${service} executed successfully${resolvedEntityId ? ` on ${resolvedEntityId}` : ''}.`
       } catch (err) {
         return `Failed to execute ${domain}.${service}${entity_id ? ` on ${entity_id}` : ''}: ${err.message}. Do not retry with the same arguments — report this error to the user.`

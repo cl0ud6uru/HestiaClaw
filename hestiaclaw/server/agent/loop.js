@@ -29,7 +29,18 @@ export function readDailyNotes(notesDir) {
  * Emit a single NDJSON line to the response stream.
  */
 function emit(res, event) {
-  try { res.write(JSON.stringify(event) + '\n') } catch {}
+  try { res.write(JSON.stringify(event) + '\n') } catch { /* response may already be closed */ }
+}
+
+export function startStreamingResponse(res, contentType = 'application/x-ndjson') {
+  res.setHeader('Content-Type', contentType)
+  res.setHeader('Transfer-Encoding', 'chunked')
+  res.setHeader('Cache-Control', 'no-cache, no-transform')
+  res.setHeader('X-Accel-Buffering', 'no')
+  res.setHeader('Connection', 'keep-alive')
+  res.socket?.setNoDelay?.(true)
+  res.socket?.setKeepAlive?.(true)
+  res.flushHeaders?.()
 }
 
 /**
@@ -243,44 +254,67 @@ export async function runAgentLoop(res, {
       for (const tc of toolCallsThisCycle) {
         let result, hasError
         const toolMetadata = registry.get(tc.name)
+        const requestApproval = async ({
+          name = tc.name,
+          input = tc.input,
+          risk = toolMetadata?.risk || 'medium',
+          kind = toolMetadata?.kind || 'write',
+          toolCallId = tc.id,
+        } = {}) => {
+          if (!approvals) {
+            throw new Error(`Tool "${name}" requires approval but approvals are not available.`)
+          }
+          const approval = approvals.request({
+            runId,
+            toolCallId,
+            name,
+            input,
+            risk,
+            kind,
+          })
+          emit(res, {
+            type: 'approval_required',
+            approvalId: approval.id,
+            id: toolCallId,
+            name,
+            input,
+            risk,
+            kind,
+            timeoutMs: approvals.timeoutMs,
+          })
+          session.recordRunEvent(runId, 'approval_required', { approvalId: approval.id, id: toolCallId, name })
+          await events?.emit('approval_required', {
+            runId,
+            approvalId: approval.id,
+            toolCall: { ...tc, id: toolCallId, name, input },
+          })
+          const decision = await approval.promise
+          session.recordRunEvent(runId, 'approval_resolved', {
+            approvalId: approval.id,
+            id: toolCallId,
+            name,
+            approved: decision.approved,
+            reason: decision.reason,
+          })
+          if (!decision.approved) {
+            throw new Error(decision.reason || `Tool "${name}" was denied by policy.`)
+          }
+          return decision
+        }
         try {
-          if (toolMetadata?.requiresApproval && approvals) {
-            const approval = approvals.request({
-              runId,
-              toolCallId: tc.id,
+          if (toolMetadata?.requiresApproval) {
+            await requestApproval({
               name: tc.name,
               input: tc.input,
               risk: toolMetadata.risk,
               kind: toolMetadata.kind,
             })
-            emit(res, {
-              type: 'approval_required',
-              approvalId: approval.id,
-              id: tc.id,
-              name: tc.name,
-              input: tc.input,
-              risk: toolMetadata.risk,
-              kind: toolMetadata.kind,
-              timeoutMs: approvals.timeoutMs,
-            })
-            session.recordRunEvent(runId, 'approval_required', { approvalId: approval.id, id: tc.id, name: tc.name })
-            await events?.emit('approval_required', { runId, approvalId: approval.id, toolCall: tc })
-            const decision = await approval.promise
-            session.recordRunEvent(runId, 'approval_resolved', {
-              approvalId: approval.id,
-              id: tc.id,
-              name: tc.name,
-              approved: decision.approved,
-              reason: decision.reason,
-            })
-            if (!decision.approved) {
-              throw new Error(decision.reason || `Tool "${tc.name}" was denied by policy.`)
-            }
           }
           result = await registry.execute(tc.name, tc.input, {
             conversationId,
             source,
             approvalsAvailable: Boolean(approvals),
+            requestApproval,
           })
           hasError = false
         } catch (err) {

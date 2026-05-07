@@ -692,12 +692,14 @@ export default function App() {
     let finalAssistantReply = ''
     let streamingActive = false
 
-    const startStreaming = () => {
+    const ensureAssistantMessage = () => {
       if (streamingActive) return
       streamingActive = true
       setIsThinking(false)
       updateMessages(convId, prev => [...prev, { id: assistantId, role: 'assistant', content: '', streaming: true }])
     }
+
+    const startStreaming = ensureAssistantMessage
 
     const appendChunk = (chunk) => {
       if (!chunk) return
@@ -752,6 +754,7 @@ export default function App() {
             startStreaming()
             appendChunk(event.content)
           } else if (event.type === 'tool_start') {
+            ensureAssistantMessage()
             const displayName = event.name.replace(/__/g, ': ')
             setActiveToolName(displayName)
             if (/graphiti|memory/i.test(event.name)) setMemoryPulseAt(Date.now())

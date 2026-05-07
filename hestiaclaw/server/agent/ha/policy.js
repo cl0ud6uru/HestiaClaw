@@ -126,7 +126,7 @@ export function evaluatePolicy({
       risk,
       allowed: true,
       requiresApproval: true,
-      reason: `Risk "${risk}" requires user approval — delegate to the underlying ha-mcp tool which is gated by approvals.`,
+      reason: `Risk "${risk}" requires user approval before execution.`,
     }
   }
 

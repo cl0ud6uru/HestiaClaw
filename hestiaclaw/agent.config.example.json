@@ -15,7 +15,9 @@
       "url": "http://localhost:8001/mcp"
     },
     "home-assistant": {
-      "url": "http://localhost:8002/mcp"
+      "url": "http://localhost:8002/mcp",
+      "role": "home-assistant",
+      "modelVisible": false
     }
   }
 }

@@ -74,12 +74,33 @@ test('orchestrator: blocks unlock from voice (high-risk source policy)', async (
   assert.equal(ha.calls.length, 0)
 })
 
-test('orchestrator: chat unlock with approvals defers to native MCP tool', async () => {
+test('orchestrator: blocks unlock from webhook (high-risk source policy)', async () => {
   const { registry, ha } = buildRegistry([{ entity_id: 'lock.front_door', friendly_name: 'Front Door', state: 'locked' }])
-  const result = await orchestrateHaControl(registry, { target: 'front door', action: 'unlock' }, { sleep: noWait, source: 'chat', approvalsAvailable: true })
+  const result = await orchestrateHaControl(registry, { target: 'front door', action: 'unlock' }, { sleep: noWait, source: 'webhook' })
   assert.equal(result.ok, false)
-  assert.equal(result.stage, 'requires_approval')
-  assert.equal(ha.calls.length, 0, 'must not auto-execute high-risk actions')
+  assert.equal(result.stage, 'policy')
+  assert.equal(result.policy.allowed, false)
+  assert.equal(ha.calls.length, 0)
+})
+
+test('orchestrator: chat unlock with approval executes through ha_control', async () => {
+  const { registry, ha } = buildRegistry([{ entity_id: 'lock.front_door', friendly_name: 'Front Door', state: 'locked' }])
+  let approvalRequest = null
+  const result = await orchestrateHaControl(registry, { target: 'front door', action: 'unlock' }, {
+    sleep: noWait,
+    source: 'chat',
+    approvalsAvailable: true,
+    requestApproval: async (request) => {
+      approvalRequest = request
+      return { approved: true }
+    },
+  })
+  assert.equal(result.ok, true, JSON.stringify(result, null, 2))
+  assert.equal(result.stage, 'verified')
+  assert.equal(approvalRequest.name, 'ha_control')
+  assert.equal(approvalRequest.risk, 'high')
+  assert.equal(ha.calls.length, 1)
+  assert.equal(ha.calls[0].entity_id, 'lock.front_door')
 })
 
 test('orchestrator: explicit entity_id short-circuits resolution', async () => {

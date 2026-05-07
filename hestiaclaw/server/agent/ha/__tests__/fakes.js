@@ -10,17 +10,46 @@ export class FakeRegistry {
   constructor() {
     this._tools = new Map()
   }
-  register(name, handler) {
-    this._tools.set(name, handler)
+  register(name, descriptionOrHandler, parameters = {}, handler = null, metadata = {}) {
+    const execute = typeof descriptionOrHandler === 'function' ? descriptionOrHandler : handler
+    const meta = typeof descriptionOrHandler === 'function' ? parameters : metadata
+    this._tools.set(name, {
+      name,
+      execute,
+      source: meta.source || 'builtin',
+      displayName: meta.displayName || name,
+      kind: meta.kind || 'read',
+      risk: meta.risk || 'low',
+      requiresApproval: meta.requiresApproval === true,
+      timeoutMs: Number(meta.timeoutMs) || null,
+      internalOnly: meta.internalOnly === true,
+      nativeName: meta.nativeName || null,
+      serverName: meta.serverName || meta.source || null,
+      role: meta.role || null,
+    })
   }
   unregister(name) {
     this._tools.delete(name)
   }
   has(name) { return this._tools.has(name) }
   async execute(name, input) {
-    const handler = this._tools.get(name)
-    if (!handler) throw new Error(`Tool "${name}" not found`)
-    return handler(input)
+    const tool = this._tools.get(name)
+    if (!tool) throw new Error(`Tool "${name}" not found`)
+    return tool.execute(input)
+  }
+  get(name) {
+    const tool = this._tools.get(name)
+    if (!tool) return null
+    const meta = { ...tool }
+    delete meta.execute
+    return meta
+  }
+  listTools() {
+    return Array.from(this._tools.values()).map(tool => {
+      const meta = { ...tool }
+      delete meta.execute
+      return meta
+    })
   }
 }
 
