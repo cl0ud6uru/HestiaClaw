@@ -23,12 +23,11 @@ export function registerHaFacade(registry) {
     'adjust brightness or colour, set thermostat temperature, run scripts or scenes, ' +
     'trigger automations, etc. ' +
     'Call this immediately when the user asks you to control a device — do NOT ask for ' +
-    'confirmation first. Supply domain + service (e.g. domain="light", service="turn_on") ' +
-    'and include entity_id inside service_data. ' +
+    'confirmation first. Supply domain, service, and entity_id as top-level parameters. ' +
     'Examples: ' +
-    '{domain:"light",service:"turn_on",service_data:{entity_id:"light.living_room",brightness_pct:80}} ' +
-    '{domain:"switch",service:"turn_off",service_data:{entity_id:"switch.fan"}} ' +
-    '{domain:"climate",service:"set_temperature",service_data:{entity_id:"climate.office",temperature:72}} ' +
+    '{domain:"light",service:"turn_on",entity_id:"light.living_room",data:{brightness_pct:80}} ' +
+    '{domain:"switch",service:"turn_off",entity_id:"switch.fan"} ' +
+    '{domain:"climate",service:"set_temperature",entity_id:"climate.office",data:{temperature:72}} ' +
     'For security-sensitive actions (lock/unlock, alarm) use the native Home Assistant MCP tools directly — they require approval.',
     {
       type: 'object',
@@ -41,14 +40,18 @@ export function registerHaFacade(registry) {
           type: 'string',
           description: 'Service name within the domain, e.g. "turn_on", "turn_off", "set_temperature", "trigger".',
         },
-        service_data: {
+        entity_id: {
+          type: 'string',
+          description: 'Target entity ID, e.g. "light.living_room", "switch.fan", "climate.office". Required for almost all device control calls.',
+        },
+        data: {
           type: 'object',
-          description: 'Service call payload, must include entity_id and any additional params like brightness_pct, temperature, etc.',
+          description: 'Additional service parameters beyond entity_id, e.g. {"brightness_pct": 80} for lights, {"temperature": 72} for climate.',
         },
       },
-      required: ['domain', 'service', 'service_data'],
+      required: ['domain', 'service', 'entity_id'],
     },
-    async ({ domain, service, service_data = {} }) => {
+    async ({ domain, service, entity_id, data, service_data }) => {
       const callTool = findTool(registry,
         'home-assistant__ha_call_service',
         'home-assistant__call_service',
@@ -62,17 +65,19 @@ export function registerHaFacade(registry) {
         return `${domain}.${service} is a security-sensitive action. Use the native Home Assistant MCP tool for this domain/service — it will prompt for approval before executing.`
       }
       try {
-        const { entity_id, ...data } = service_data
+        // Accept entity_id at top level (preferred) or nested in service_data (legacy)
+        const resolvedEntityId = entity_id || service_data?.entity_id
+        const resolvedData = data || (service_data ? (({ entity_id: _e, ...rest }) => Object.keys(rest).length ? rest : undefined)(service_data) : undefined)
         const input = {
           domain,
           service,
-          ...(entity_id ? { entity_id } : {}),
-          ...(Object.keys(data).length ? { data } : {}),
+          ...(resolvedEntityId ? { entity_id: resolvedEntityId } : {}),
+          ...(resolvedData ? { data: resolvedData } : {}),
         }
         const result = await registry.execute(callTool, input)
-        return result || `${domain}.${service} executed successfully.`
+        return result || `${domain}.${service} executed successfully on ${resolvedEntityId}.`
       } catch (err) {
-        return `Failed to execute ${domain}.${service}: ${err.message}`
+        return `Failed to execute ${domain}.${service} on ${entity_id}: ${err.message}. Do not retry with the same arguments — report this error to the user.`
       }
     },
     { kind: 'write', risk: 'low', timeoutMs: 15000 },
