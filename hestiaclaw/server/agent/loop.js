@@ -97,6 +97,7 @@ export async function runAgentLoop(res, {
   dailyNotes = '',
   activeMemory = '',
   allowedTools = null,
+  source = 'chat',
 }) {
   const isAnthropic = provider instanceof AnthropicProvider
   const isOpenAI = provider instanceof OpenAIProvider
@@ -276,7 +277,11 @@ export async function runAgentLoop(res, {
               throw new Error(decision.reason || `Tool "${tc.name}" was denied by policy.`)
             }
           }
-          result = await registry.execute(tc.name, tc.input, { conversationId })
+          result = await registry.execute(tc.name, tc.input, {
+            conversationId,
+            source,
+            approvalsAvailable: Boolean(approvals),
+          })
           hasError = false
         } catch (err) {
           result = `Error: ${err.message}`

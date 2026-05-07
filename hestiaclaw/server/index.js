@@ -800,7 +800,9 @@ if (agentConfig) {
   registerScheduleFollowup(registry)
   registerSkillsManagerTools(registry, SKILLS_DIR)
   registerInvokeSkill(registry, SKILLS_DIR)
-  registerHaFacade(registry)
+  registerHaFacade(registry, {
+    approvalsAvailable: agentConfig.harness?.approvals !== false,
+  })
 
   mcpManager = new McpClientManager(registry)
   await mcpManager.init(agentConfig.mcpServers || {})

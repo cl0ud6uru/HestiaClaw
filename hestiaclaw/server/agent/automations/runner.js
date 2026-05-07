@@ -89,6 +89,7 @@ export async function runAutomation(automationId, triggerContext = '') {
         memorySummary,
         dailyNotes,
         activeMemory,
+        source: 'automation',
         settings: {
           contextMaxMessages: 20,
           compactionEnabled: false,

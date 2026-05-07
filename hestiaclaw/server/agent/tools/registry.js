@@ -84,12 +84,12 @@ export class ToolRegistry {
     const effectiveInput = (tool.injectConversationId && context.conversationId)
       ? { ...input, conversation_id: context.conversationId }
       : input
-    if (!tool.timeoutMs) return tool.execute(effectiveInput)
+    if (!tool.timeoutMs) return tool.execute(effectiveInput, context)
 
     let timeout
     try {
       return await Promise.race([
-        tool.execute(effectiveInput),
+        tool.execute(effectiveInput, context),
         new Promise((_, reject) => {
           timeout = setTimeout(() => reject(new Error(`Tool "${name}" timed out after ${tool.timeoutMs}ms`)), tool.timeoutMs)
         }),

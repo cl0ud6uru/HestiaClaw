@@ -10,7 +10,8 @@
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "start": "node server/index.js"
+    "start": "node server/index.js",
+    "test": "node --test 'server/**/__tests__/**/*.test.js'"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.91.1",

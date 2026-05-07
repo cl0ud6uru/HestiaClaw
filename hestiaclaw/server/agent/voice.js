@@ -83,6 +83,7 @@ export function createVoiceAgentRouter({ provider, session, registry, systemProm
       memorySummary,
       dailyNotes,
       activeMemory,
+      source: 'voice',
       allowedTools: Array.isArray(settings.allowedTools) ? settings.allowedTools : null,
       settings: {
         contextMaxMessages: settings.contextMaxMessages || 40,

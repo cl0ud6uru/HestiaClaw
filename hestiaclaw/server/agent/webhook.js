@@ -151,6 +151,7 @@ export function createWebhookRouter({ provider, session, registry, systemPrompt,
       memorySummary,
       dailyNotes,
       activeMemory,
+      source: 'webhook',
       allowedTools: Array.isArray(settings.allowedTools) ? settings.allowedTools : null,
       settings: {
         contextMaxMessages: settings.contextMaxMessages || 40,
