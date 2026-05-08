@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.22
+
+- Lock the built-in core memory + Home Assistant policy system prompt by default; the legacy `system_prompt` add-on option is now ignored at runtime. Use `data/SOUL.md` (editable from the Hestia settings panel) for per-install persona/tone customization, which is prepended to the locked policy at turn time. Set `harness.systemPromptLocked: false` (or `HESTIA_SYSTEM_PROMPT_LOCKED=false`) as a developer escape hatch.
+
 ## 1.0.10
 
 - Fix blank local ingress page at `/ee1bc088_hestiaclaw` without a trailing slash by injecting an HTML `<base>` tag before relative asset URLs are parsed
