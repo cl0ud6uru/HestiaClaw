@@ -335,6 +335,36 @@
   border-color: rgba(0, 212, 255, 0.5);
 }
 
+.agent-panel__readonly-policy {
+  margin-top: 10px;
+  background: rgba(0, 12, 36, 0.6);
+  border: 1px solid rgba(0, 180, 255, 0.18);
+  padding: 8px 10px;
+}
+
+.agent-panel__readonly-policy summary {
+  cursor: pointer;
+  font-family: 'Orbitron', sans-serif;
+  font-size: 0.75rem;
+  letter-spacing: 0.08em;
+  color: #9bd9ff;
+  text-transform: uppercase;
+}
+
+.agent-panel__readonly-policy-text {
+  margin: 8px 0 0;
+  max-height: 320px;
+  overflow: auto;
+  white-space: pre-wrap;
+  font-family: 'JetBrains Mono', 'Courier New', monospace;
+  font-size: 0.78rem;
+  line-height: 1.45;
+  color: #c0e6ff;
+  background: rgba(0, 4, 18, 0.9);
+  border-left: 2px solid rgba(0, 212, 255, 0.55);
+  padding: 10px 12px;
+}
+
 .agent-panel__tool-filter {
   margin-top: 10px;
   display: flex;

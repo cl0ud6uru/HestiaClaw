@@ -206,19 +206,22 @@ export default function AgentPanel({ activeConversationTitle, onClose, onForkCon
     setSaving(true)
     setSaveMsg('')
     try {
+      const payload = {
+        provider: draft.provider || undefined,
+        model: draft.model || null,
+        reasoningEffort: draft.reasoningEffort || null,
+        thinkingBudget: draft.thinkingBudget ? Number(draft.thinkingBudget) : null,
+        contextMaxMessages: Number(draft.contextMaxMessages) || 40,
+        compactionEnabled: draft.compactionEnabled,
+        allowedTools: draft.allowedTools,
+      }
+      if (data?.settings?.systemPromptLocked === false) {
+        payload.systemPrompt = draft.systemPrompt
+      }
       const res = await fetch('/api/agent/settings', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          provider: draft.provider || undefined,
-          model: draft.model || null,
-          systemPrompt: draft.systemPrompt,
-          reasoningEffort: draft.reasoningEffort || null,
-          thinkingBudget: draft.thinkingBudget ? Number(draft.thinkingBudget) : null,
-          contextMaxMessages: Number(draft.contextMaxMessages) || 40,
-          compactionEnabled: draft.compactionEnabled,
-          allowedTools: draft.allowedTools,
-        }),
+        body: JSON.stringify(payload),
       })
       if (!res.ok) throw new Error('Save failed.')
       setSaveMsg('Settings applied.')
@@ -470,16 +473,26 @@ export default function AgentPanel({ activeConversationTitle, onClose, onForkCon
             </div>
           </section>
 
-          <section className="agent-panel__section">
-            <div className="agent-panel__section-title">Memory Policy <span className="agent-panel__section-hint">agent.config.json — memory &amp; tool instructions</span></div>
-            <textarea
-              className="agent-panel__textarea"
-              value={draft.systemPrompt}
-              onChange={e => setDraft(d => ({ ...d, systemPrompt: e.target.value }))}
-              rows={6}
-              placeholder="## Pinned Memory..."
-            />
-          </section>
+          {data.settings?.systemPromptLocked === false ? (
+            <section className="agent-panel__section">
+              <div className="agent-panel__section-title">Memory Policy <span className="agent-panel__section-hint">agent.config.json — memory &amp; tool instructions (lock disabled)</span></div>
+              <textarea
+                className="agent-panel__textarea"
+                value={draft.systemPrompt}
+                onChange={e => setDraft(d => ({ ...d, systemPrompt: e.target.value }))}
+                rows={6}
+                placeholder="## Memory Architecture..."
+              />
+            </section>
+          ) : (
+            <section className="agent-panel__section">
+              <div className="agent-panel__section-title">Core Policy <span className="agent-panel__section-hint">Built in — memory &amp; Home Assistant policy</span></div>
+              <details className="agent-panel__readonly-policy">
+                <summary>View built-in policy</summary>
+                <pre className="agent-panel__readonly-policy-text">{draft.systemPrompt}</pre>
+              </details>
+            </section>
+          )}
 
           <section className="agent-panel__section">
             <div className="agent-panel__section-title">Reasoning</div>

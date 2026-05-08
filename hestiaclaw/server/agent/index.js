@@ -7,7 +7,7 @@ import { createProvider } from './providers/index.js'
 import { loadSkills, parseSkillManifest } from './skills.js'
 import { loadHistory, writeMemory } from './memory-history-store.js'
 
-export function createAgentRouter({ provider, session, registry, systemPrompt, mcpManager, approvals, events, settings = {}, skillsDir = null, configPath = null, memoryPath = null, historyPath = null, soulPath = null, notesDir = null, onConsolidate = null }) {
+export function createAgentRouter({ provider, session, registry, systemPrompt, systemPromptLocked = true, systemPromptSource = 'builtin', mcpManager, approvals, events, settings = {}, skillsDir = null, configPath = null, memoryPath = null, historyPath = null, soulPath = null, notesDir = null, onConsolidate = null }) {
   const getSkills = skillsDir ? () => loadSkills(skillsDir) : () => Promise.resolve([])
   const router = Router()
   let currentProvider = provider
@@ -160,6 +160,8 @@ export function createAgentRouter({ provider, session, registry, systemPrompt, m
         compactionEnabled: runtimeSettings.compactionEnabled,
         approvalsEnabled: runtimeSettings.approvalsEnabled,
         systemPrompt: runtimeSettings.systemPrompt,
+        systemPromptLocked,
+        systemPromptSource,
         model: runtimeSettings.model,
         reasoningEffort: runtimeSettings.reasoningEffort,
         thinkingBudget: runtimeSettings.thinkingBudget,
@@ -281,7 +283,11 @@ export function createAgentRouter({ provider, session, registry, systemPrompt, m
         type: currentProvider.name,
         model: runtimeSettings.model || currentProvider.model,
       }
-      cfg.systemPrompt = runtimeSettings.systemPrompt
+      if (systemPromptLocked) {
+        delete cfg.systemPrompt
+      } else {
+        cfg.systemPrompt = runtimeSettings.systemPrompt
+      }
       cfg.harness = {
         ...cfg.harness,
         compactionEnabled: runtimeSettings.compactionEnabled,
@@ -311,7 +317,10 @@ export function createAgentRouter({ provider, session, registry, systemPrompt, m
       if (!approvals) return res.status(409).json({ error: 'Approvals were disabled in agent.config.json and cannot be toggled at runtime.' })
       runtimeSettings.approvalsEnabled = body.approvals
     }
-    if (typeof body.systemPrompt === 'string') {
+    if (typeof body.systemPrompt === 'string' && body.systemPrompt !== runtimeSettings.systemPrompt) {
+      if (systemPromptLocked) {
+        return res.status(409).json({ error: 'System prompt is locked. The core memory & Home Assistant policy ships built-in; edit data/SOUL.md for per-install customization.' })
+      }
       runtimeSettings.systemPrompt = body.systemPrompt
     }
     if (typeof body.model === 'string') {

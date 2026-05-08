@@ -11,7 +11,7 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "start": "node server/index.js",
-    "test": "node --test server"
+    "test": "node --test \"server/**/*.test.js\""
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.91.1",

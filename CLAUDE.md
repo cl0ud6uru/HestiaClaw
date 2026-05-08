@@ -145,7 +145,7 @@ Each line is a JSON object: `{ type: "begin"|"item"|"end", metadata: { nodeId, n
 ```json
 {
   "provider": { "type": "openai", "model": "gpt-4o" },
-  "systemPrompt": "You are Hestia, a home intelligence assistant...",
+  "harness": { "systemPromptLocked": true },
   "mcpServers": {
     "home-assistant": {
       "command": "uvx",
@@ -155,6 +155,8 @@ Each line is a JSON object: `{ type: "begin"|"item"|"end", metadata: { nodeId, n
   }
 }
 ```
+
+The core memory + Home Assistant policy is built in (`server/agent/prompts/default-system-prompt.js`) and locked by default. `data/SOUL.md` is the supported per-install customization layer for persona/tone and is prepended to the built-in policy at turn time. Developer escape hatch: set `harness.systemPromptLocked: false` or `HESTIA_SYSTEM_PROMPT_LOCKED=false` to use a `systemPrompt` field from this config as the base instead.
 
 **Supported provider types**: `anthropic`, `openai`
 

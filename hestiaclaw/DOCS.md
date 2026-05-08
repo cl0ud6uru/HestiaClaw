@@ -24,7 +24,7 @@ An AI home intelligence assistant with a chat interface, voice I/O, and a 3D kno
 | `model` | Yes | Model name, e.g. `claude-opus-4-7` or `gpt-4o` |
 | `anthropic_api_key` | If provider=anthropic | Your Anthropic API key |
 | `openai_api_key` | If provider=openai | Your OpenAI API key |
-| `system_prompt` | No | Override the default Hestia system prompt |
+| `system_prompt` | — | **Deprecated.** Ignored at runtime. The core memory + Home Assistant policy is built into the app. Edit `data/SOUL.md` from the Hestia settings panel for per-install persona/tone customization. |
 | `elevenlabs_api_key` | No | ElevenLabs key for voice synthesis |
 | `elevenlabs_default_voice_id` | No | ElevenLabs voice ID to use |
 | `graphiti_url` | No | Graphiti MCP URL, e.g. `http://localhost:8000/mcp` |

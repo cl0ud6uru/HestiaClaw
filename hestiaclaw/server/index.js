@@ -20,6 +20,8 @@ import { AgentEventBus } from './agent/events.js'
 import { createProvider } from './agent/providers/index.js'
 import { AgentSession } from './agent/session.js'
 import { ToolRegistry } from './agent/tools/registry.js'
+import { resolveSystemPrompt } from './agent/config.js'
+import { DEFAULT_SOUL } from './agent/prompts/default-system-prompt.js'
 import { registerWebSearch } from './agent/tools/builtin/web-search.js'
 import { registerMemoryTools, registerDailyNoteTool } from './agent/tools/builtin/memory-file.js'
 import { registerScheduleFollowup } from './agent/tools/builtin/schedule-followup.js'
@@ -83,7 +85,7 @@ if (!fs.existsSync(MEMORY_PATH)) {
 }
 
 if (!fs.existsSync(SOUL_PATH)) {
-  fs.writeFileSync(SOUL_PATH, 'You are Hestia, a smart home AI assistant. You are precise, helpful, and professional. Be concise but thorough.\n', 'utf8')
+  fs.writeFileSync(SOUL_PATH, DEFAULT_SOUL, 'utf8')
   console.log('[soul] data/SOUL.md created')
 }
 
@@ -816,7 +818,12 @@ if (agentConfig) {
   }
 
   if (provider) {
-    const systemPrompt = agentConfig.systemPrompt || ''
+    const { systemPrompt, systemPromptLocked, systemPromptSource } = resolveSystemPrompt(agentConfig)
+    if (systemPromptLocked) {
+      console.log('[agent] System prompt: built-in (locked)')
+    } else {
+      console.log(`[agent] System prompt: ${systemPromptSource} (lock disabled)`)
+    }
     const harnessSettings = {
       contextMaxMessages: Number(agentConfig.harness?.contextMaxMessages) || 40,
       compactionEnabled: agentConfig.harness?.compactionEnabled !== false,
@@ -834,6 +841,8 @@ if (agentConfig) {
       session: agentSession,
       registry,
       systemPrompt,
+      systemPromptLocked,
+      systemPromptSource,
       mcpManager,
       approvals,
       events,

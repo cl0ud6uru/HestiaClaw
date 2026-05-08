@@ -91,7 +91,7 @@ In the HestiaClaw add-on → **Configuration** tab:
 | `ha_token` | ✅ | Long-lived access token created above |
 | `admin_username` | ✅ | Login username for the Hestia UI |
 | `admin_password` | ✅ | Login password — auto-generated and logged if left blank |
-| `system_prompt` | — | Custom system prompt; a default home-assistant prompt is used if blank |
+| `system_prompt` | — | **Deprecated.** Ignored at runtime. The core memory + Home Assistant policy ships built-in; edit `data/SOUL.md` from the Hestia settings panel for per-install customization |
 | `elevenlabs_api_key` | Voice | ElevenLabs key for STT + TTS |
 | `elevenlabs_default_voice_id` | Voice | Default TTS voice ID |
 | `graphiti_url` | Memory | URL of an external Graphiti MCP server (e.g. `http://your-server:8001/mcp`) |
@@ -122,7 +122,9 @@ cp .env.example .env
 # NEO4J_PASSWORD, HA_URL, and HA_TOKEN at minimum
 
 cp agent.config.example.json agent.config.json
-# Edit agent.config.json — set your provider, model, and system prompt
+# Edit agent.config.json — set your provider, model, and MCP servers.
+# The core memory + Home Assistant policy is built into the app; per-install
+# persona/tone goes in data/SOUL.md (editable from the Hestia settings panel).
 
 docker compose up -d
 ```
@@ -179,12 +181,12 @@ cp agent.config.example.json agent.config.json
     "type": "openai",
     "model": "gpt-5.4-mini"
   },
-  "systemPrompt": "You are Hestia, a smart home AI assistant...",
   "harness": {
     "approvals": true,
     "approvalTimeoutMs": 60000,
     "compactionEnabled": true,
-    "contextMaxMessages": 40
+    "contextMaxMessages": 40,
+    "systemPromptLocked": true
   },
   "mcpServers": {
     "home-assistant": {
@@ -196,6 +198,8 @@ cp agent.config.example.json agent.config.json
   }
 }
 ```
+
+The core memory + Home Assistant policy is built in (locked by default). Per-install persona and tone go in `data/SOUL.md`, which is editable from the Agent Harness settings panel. Developers can opt out of the lock with `harness.systemPromptLocked: false` or `HESTIA_SYSTEM_PROMPT_LOCKED=false`, in which case `systemPrompt` from this file is used instead.
 
 **Supported providers:**
 

@@ -106,7 +106,9 @@ The harness activates when `agent.config.json` exists in the project root. Witho
     "type": "openai",
     "model": "gpt-4o"
   },
-  "systemPrompt": "You are Hestia, a home intelligence assistant...",
+  "harness": {
+    "systemPromptLocked": true
+  },
   "mcpServers": {
     "home-assistant": {
       "command": "/home/jason/.local/bin/uvx",
@@ -121,6 +123,8 @@ The harness activates when `agent.config.json` exists in the project root. Witho
 ```
 
 `${VAR}` in `env` values are expanded from `process.env` at startup.
+
+The core memory + Home Assistant policy ships built-in; the canonical text lives in `server/agent/prompts/default-system-prompt.js`. SOUL.md (`data/SOUL.md`) is the supported per-install customization layer and is prepended to the built-in policy at turn time. To opt out of the lock for development, set `harness.systemPromptLocked: false` or the env `HESTIA_SYSTEM_PROMPT_LOCKED=false`; an explicit `systemPrompt` field in this config is then used as the base.
 
 ### Provider interface (`server/agent/providers/base.js`)
 

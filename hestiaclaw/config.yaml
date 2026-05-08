@@ -1,5 +1,5 @@
 name: HestiaClaw
-version: "1.0.20"
+version: "1.0.21"
 slug: hestiaclaw
 description: AI home intelligence assistant with native Home Assistant integration
 url: https://github.com/cl0ud6uru/hestiaclaw
@@ -31,6 +31,9 @@ options:
   model: "claude-opus-4-7"
   anthropic_api_key: ""
   openai_api_key: ""
+  # DEPRECATED — ignored at runtime. The core memory + Home Assistant policy
+  # is built into the app; edit data/SOUL.md from the Hestia settings panel
+  # for per-install persona/tone customization.
   system_prompt: ""
   elevenlabs_api_key: ""
   elevenlabs_default_voice_id: ""
