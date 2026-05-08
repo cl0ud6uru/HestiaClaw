@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.0.23
+
+- Fix: Home Assistant tools were invisible to the model when `agent.config.json` carried the legacy `modelVisible: false` (or `role`) field on an MCP server entry. That mechanism existed to hide HA tools from the model while the orchestrator owned them; with the orchestrator removed, it just suppresses every HA tool. Both fields are now ignored with a one-line deprecation warning at startup; remove them from `agent.config.json` to silence it. Native `home-assistant__*` tools now show up in the policy editor and are callable.
+- Fix Agent Harness panel: hide the legacy "Allow all tools / Tool Filter" UI when the Tool Policy section is active so they don't render side-by-side. Style the Tool Policy list properly (no more truncated `read_me…` names; profile description rendered in a muted info color instead of the warning amber). Per-tool approval-mode dropdown is now wide enough to read.
+
 ## 1.0.22
 
 - Replace the Home Assistant facade with native ha-mcp tool exposure plus a new harness-level Tool Policy layer. The custom `ha_get_area_summary` builtin and any associated resolver code have been removed; the model now talks to ha-mcp tools directly and is told to search/list state before issuing service calls.

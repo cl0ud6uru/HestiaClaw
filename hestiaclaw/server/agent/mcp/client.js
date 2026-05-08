@@ -20,6 +20,12 @@ export class McpClientManager {
     if (!entries.length) return
 
     for (const [serverName, config] of entries) {
+      if (config.modelVisible === false) {
+        console.warn(`[mcp] "${serverName}": ignoring legacy "modelVisible: false" — the HA orchestrator that needed this has been removed; tools are now exposed natively. Remove this field from agent.config.json to silence this warning.`)
+      }
+      if (config.role) {
+        console.warn(`[mcp] "${serverName}": ignoring legacy "role: ${config.role}" — the harness Tool Policy now governs visibility/approval; remove this field from agent.config.json to silence this warning.`)
+      }
       try {
         await this._connectServer(serverName, config)
       } catch (err) {
@@ -30,8 +36,6 @@ export class McpClientManager {
           transport: config.url ? (config.transport || 'auto') : 'stdio',
           url: config.url || null,
           command: config.command || null,
-          role: config.role || null,
-          modelVisible: config.modelVisible !== false,
           toolCount: 0,
           error: err.message,
         })
@@ -47,8 +51,6 @@ export class McpClientManager {
     const { tools } = await client.listTools()
     let registered = 0
     const serverToolNames = new Set()
-    const role = config.role || null
-    const modelVisible = config.modelVisible !== false
 
     for (const tool of tools) {
       const qualifiedName = this._uniqueToolName(serverName, tool.name, serverToolNames)
@@ -66,12 +68,10 @@ export class McpClientManager {
           displayName: `${serverName}: ${tool.name}`,
           nativeName: tool.name,
           serverName,
-          role,
           kind: this._inferToolKind(tool.name),
           risk: this._inferToolRisk(tool.name),
           requiresApproval: this._requiresApproval(tool.name),
           timeoutMs: 30000,
-          internalOnly: !modelVisible,
         },
       )
       registered++
@@ -84,8 +84,6 @@ export class McpClientManager {
       transport: transportType,
       url: config.url || null,
       command: config.command || null,
-      role,
-      modelVisible,
       toolCount: registered,
       error: null,
     })
