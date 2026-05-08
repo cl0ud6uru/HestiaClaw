@@ -463,6 +463,59 @@
   padding: 4px 0;
 }
 
+.agent-panel__policy-description {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 0.82rem;
+  color: rgba(180, 220, 240, 0.72);
+  padding: 4px 0 8px;
+  line-height: 1.35;
+}
+
+.agent-panel__policy-tools {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 4px;
+}
+
+.agent-panel__policy-tool {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 4px 6px;
+  border: 1px solid rgba(0, 180, 255, 0.10);
+  border-radius: 4px;
+  font-family: 'JetBrains Mono', 'Courier New', monospace;
+  font-size: 0.78rem;
+}
+
+.agent-panel__policy-tool-name {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: rgba(220, 240, 255, 0.92);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.agent-panel__policy-tool-name em {
+  font-style: normal;
+  font-size: 0.7rem;
+  flex-shrink: 0;
+}
+
+.agent-panel__policy-dot--on { color: #00ffaa; }
+.agent-panel__policy-dot--off { color: rgba(255, 255, 255, 0.25); }
+
+.agent-panel__policy-tool select {
+  flex-shrink: 0;
+  min-width: 96px;
+}
+
 .agent-panel__settings-footer {
   display: flex;
   align-items: center;

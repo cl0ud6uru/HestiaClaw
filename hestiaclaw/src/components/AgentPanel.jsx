@@ -620,8 +620,9 @@ export default function AgentPanel({ activeConversationTitle, onClose, onForkCon
             </div>
           </section>
 
+          {!policy && (
           <section className="agent-panel__section">
-            <div className="agent-panel__section-title">Tool Filter</div>
+            <div className="agent-panel__section-title">Tool Filter <span className="agent-panel__section-hint">legacy — Tool Policy below supersedes this when active</span></div>
             <label className="agent-panel__field agent-panel__field--checkbox">
               <input
                 type="checkbox"
@@ -685,6 +686,7 @@ export default function AgentPanel({ activeConversationTitle, onClose, onForkCon
               </div>
             )}
           </section>
+          )}
 
           {policy && (
             <section className="agent-panel__section">
@@ -706,15 +708,16 @@ export default function AgentPanel({ activeConversationTitle, onClose, onForkCon
                 </label>
               </div>
               {profiles.find(p => p.id === policy.profile)?.description && (
-                <div className="agent-panel__filter-warning" style={{ background: 'transparent', border: 'none', opacity: 0.7 }}>
+                <div className="agent-panel__policy-description">
                   {profiles.find(p => p.id === policy.profile).description}
                 </div>
               )}
-              <div className="agent-panel__tool-filter">
+              <div className="agent-panel__policy-tools">
                 {policyTools.map(t => (
-                  <div key={t.name} className="agent-panel__filter-tool" style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
-                    <span title={`${t.kind} · ${t.risk}${t.resolved?.reason ? ' — ' + t.resolved.reason : ''}`}>
-                      {t.resolved?.visible ? '●' : '○'} {t.name}
+                  <div key={t.name} className="agent-panel__policy-tool">
+                    <span className="agent-panel__policy-tool-name" title={`${t.kind} · ${t.risk}${t.resolved?.reason ? ' — ' + t.resolved.reason : ''}`}>
+                      <em className={t.resolved?.visible ? 'agent-panel__policy-dot--on' : 'agent-panel__policy-dot--off'}>●</em>
+                      {t.name}
                     </span>
                     <select
                       className="agent-panel__select"
