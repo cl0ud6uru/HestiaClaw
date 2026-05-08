@@ -6,8 +6,9 @@ import { runAgentLoop, readDailyNotes, startStreamingResponse } from './loop.js'
 import { createProvider } from './providers/index.js'
 import { loadSkills, parseSkillManifest } from './skills.js'
 import { loadHistory, writeMemory } from './memory-history-store.js'
+import { listProfiles, APPROVAL_MODES, SOURCES, TOOL_PROFILES } from './tool-policy.js'
 
-export function createAgentRouter({ provider, session, registry, systemPrompt, systemPromptLocked = true, systemPromptSource = 'builtin', mcpManager, approvals, events, settings = {}, skillsDir = null, configPath = null, memoryPath = null, historyPath = null, soulPath = null, notesDir = null, onConsolidate = null }) {
+export function createAgentRouter({ provider, session, registry, systemPrompt, systemPromptLocked = true, systemPromptSource = 'builtin', mcpManager, approvals, toolPolicy = null, events, settings = {}, skillsDir = null, configPath = null, memoryPath = null, historyPath = null, soulPath = null, notesDir = null, onConsolidate = null }) {
   const getSkills = skillsDir ? () => loadSkills(skillsDir) : () => Promise.resolve([])
   const router = Router()
   let currentProvider = provider
@@ -116,6 +117,8 @@ export function createAgentRouter({ provider, session, registry, systemPrompt, s
         dailyNotes,
         activeMemory,
         allowedTools: runtimeSettings.allowedTools,
+        toolPolicy,
+        source: 'chat',
         settings: {
           contextMaxMessages: runtimeSettings.contextMaxMessages,
           compactionEnabled: runtimeSettings.compactionEnabled,
@@ -170,6 +173,7 @@ export function createAgentRouter({ provider, session, registry, systemPrompt, s
         providerName: currentProvider.name,
       },
       hooks: events?.getHandlerCounts() || [],
+      toolPolicy: toolPolicy ? toolPolicy.toJSON() : null,
     })
   })
 
@@ -248,6 +252,66 @@ export function createAgentRouter({ provider, session, registry, systemPrompt, s
     return res.json({ ok: true })
   })
 
+  // Tool Policy endpoints — read profiles, read/update active policy.
+  router.get('/tool-profiles', (req, res) => {
+    res.json({
+      profiles: listProfiles(),
+      approvalModes: APPROVAL_MODES,
+      sources: SOURCES,
+    })
+  })
+
+  router.get('/tool-policy', (req, res) => {
+    if (!toolPolicy) return res.status(503).json({ error: 'Tool policy not enabled.' })
+    const profileMeta = TOOL_PROFILES[toolPolicy.profileId] || null
+    const sourceParam = String(req.query.source || 'chat')
+    const source = SOURCES.includes(sourceParam) ? sourceParam : 'chat'
+    const tools = registry.listTools()
+      .filter(t => !t.internalOnly)
+      .map(t => {
+        const r = toolPolicy.resolve(t, source)
+        const override = toolPolicy.overrides[t.name] || null
+        return {
+          name: t.name,
+          source: t.source,
+          displayName: t.displayName,
+          kind: t.kind,
+          risk: t.risk,
+          requiresApproval: t.requiresApproval,
+          override,
+          resolved: r,
+        }
+      })
+    res.json({
+      policy: toolPolicy.toJSON(),
+      profile: profileMeta ? { id: profileMeta.id, name: profileMeta.name, description: profileMeta.description } : null,
+      tools,
+    })
+  })
+
+  router.put('/tool-policy', async (req, res) => {
+    if (!toolPolicy) return res.status(503).json({ error: 'Tool policy not enabled.' })
+    const body = req.body || {}
+    if (typeof body.profile === 'string') {
+      try { toolPolicy.setProfile(body.profile) }
+      catch (err) { return res.status(400).json({ error: err.message }) }
+    }
+    if (body.overrides && typeof body.overrides === 'object') {
+      // Replace whole map: clear then re-apply.
+      for (const name of Object.keys(toolPolicy.overrides)) {
+        delete toolPolicy.overrides[name]
+      }
+      for (const [name, override] of Object.entries(body.overrides)) {
+        toolPolicy.setOverride(name, override || {})
+      }
+    }
+    if (body.toolName && typeof body.toolName === 'string' && body.override) {
+      toolPolicy.setOverride(body.toolName, body.override)
+    }
+    persistSettings()
+    return res.json({ ok: true, policy: toolPolicy.toJSON() })
+  })
+
   const modelsCache = new Map()
   const MODELS_CACHE_TTL = 5 * 60 * 1000
 
@@ -296,6 +360,7 @@ export function createAgentRouter({ provider, session, registry, systemPrompt, s
         ...(runtimeSettings.reasoningEffort != null ? { reasoningEffort: runtimeSettings.reasoningEffort } : {}),
         ...(runtimeSettings.thinkingBudget != null ? { thinkingBudget: runtimeSettings.thinkingBudget } : {}),
         ...(runtimeSettings.allowedTools !== null ? { allowedTools: runtimeSettings.allowedTools } : { allowedTools: undefined }),
+        ...(toolPolicy ? { toolPolicy: toolPolicy.toJSON() } : {}),
       }
       await writeFile(configPath, JSON.stringify(cfg, null, 2) + '\n', 'utf8')
     } catch (err) {

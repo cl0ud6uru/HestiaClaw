@@ -135,7 +135,8 @@ Each line is a JSON object: `{ type: "begin"|"item"|"end", metadata: { nodeId, n
 | `server/agent/tools/builtin/memory-file.js` | `read_memory` + `write_memory` builtin tools for `data/MEMORY.md` |
 | `server/agent/memory-consolidation.js` | Daily consolidation job — fetches Graphiti episodes → LLM → prunes dupes → writes MEMORY.md |
 | `server/agent/mcp/client.js` | MCP stdio client — connects servers from `agent.config.json`, registers their tools |
-| `src/components/AgentPanel.jsx` | Agent Harness diagnostics panel — provider/model dropdowns (live-fetched), MCP server status, tool metadata, recent runs, runtime settings |
+| `server/agent/tool-policy.js` | Tool Policy engine — profiles, per-tool overrides (`enabled`, `approval`, `allowedSources`), source-aware visibility/approval resolution |
+| `src/components/AgentPanel.jsx` | Agent Harness diagnostics panel — provider/model dropdowns (live-fetched), MCP server status, tool metadata, recent runs, runtime settings, Tool Policy editor |
 
 ## Agent harness
 
@@ -172,6 +173,8 @@ The core memory + Home Assistant policy is built in (`server/agent/prompts/defau
 **Conversation history**: stored in SQLite `agent_messages` table, keyed by `conversation_id`. The `content` column stores the full provider message JSON so tool metadata such as OpenAI `tool_calls` and `tool_call_id` survives reloads. The server holds history server-side; the client only sends `{ message, conversation_id }` per turn.
 
 **Harness controls**: risky MCP write tools require browser approval before execution. Long conversations use bounded context with a generated summary injected into the effective system prompt. Agent conversations can be forked from the Agent Harness panel, copying server-side history to a new conversation id.
+
+**Tool Policy**: tool visibility, per-tool approval mode, and per-source allow rules are decoupled. Profiles (`minimal` / `home-control` / `full-agent` / `developer` / `custom`) provide defaults; per-tool overrides live in `harness.toolPolicy` in `agent.config.json`. Approval modes per tool: `never` / `writes` (write tools or non-low risk) / `always` / `block` / `default` (use registry-inferred risk). Each request carries a `source` (`chat` / `webhook` / `voice`) so the policy can block writes from voice or webhook channels where no approval popup is possible. The Home Assistant facade has been removed — the model uses native `home-assistant__*` MCP tools directly. Endpoints: `GET /api/agent/tool-profiles`, `GET/PUT /api/agent/tool-policy`. For OpenAI, the full tool list is sent every turn and the active subset is constrained via `tool_choice.allowed_tools`, keeping the cached tools-prefix stable across turns.
 
 **Runtime provider & model switching**: `POST /api/agent/settings` accepts a `provider` field (`anthropic` | `openai`) that hot-swaps the active provider instance without a server restart. `GET /api/agent/models?provider=X` calls the provider's models API and returns a sorted list (cached 5 min per provider). Both `AnthropicProvider` and `OpenAIProvider` expose a `listModels()` method used by this endpoint.
 

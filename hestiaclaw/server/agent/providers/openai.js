@@ -96,12 +96,29 @@ export class OpenAIProvider extends Provider {
       strict: false,
     }))
 
+    // Cache-stable mode: send the full tool list and restrict callable tools
+    // via tool_choice.allowed_tools so the cached tools-prefix doesn't churn
+    // when the active subset changes turn-to-turn.
+    let toolChoice = null
+    if (Array.isArray(options.allowedToolNames) && responsesTools.length) {
+      const allowedSet = new Set(options.allowedToolNames)
+      const allowed = responsesTools
+        .filter(t => allowedSet.has(t.name))
+        .map(t => ({ type: 'function', name: t.name }))
+      if (allowed.length === 0) {
+        toolChoice = 'none'
+      } else if (allowed.length < responsesTools.length) {
+        toolChoice = { type: 'allowed_tools', mode: 'auto', tools: allowed }
+      }
+    }
+
     const params = {
       model,
       input,
       stream: true,
       ...(options.system ? { instructions: options.system } : {}),
       ...(responsesTools.length ? { tools: responsesTools } : {}),
+      ...(toolChoice ? { tool_choice: toolChoice } : {}),
       // Responses API: reasoning is a nested object. Only applied on tool-free turns
       // because tool calls + reasoning together can cause API errors on some models.
       ...(reasoningEffort && !responsesTools.length

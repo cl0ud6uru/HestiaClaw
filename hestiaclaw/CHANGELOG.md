@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.0.22
+
+- Replace the Home Assistant facade with native ha-mcp tool exposure plus a new harness-level Tool Policy layer. The custom `ha_get_area_summary` builtin and any associated resolver code have been removed; the model now talks to ha-mcp tools directly and is told to search/list state before issuing service calls.
+- Add Tool Profiles (Minimal, Home Control, Full Agent, Developer, Custom) selectable from the Agent Harness panel. Each profile decides which tools are visible and provides per-source defaults (e.g. block high-risk tools from voice/webhook).
+- Add per-tool approval modes (`never` / `writes` / `always` / `block` / `default`) and per-tool `allowedSources` overrides, persisted under `harness.toolPolicy` in `agent.config.json`.
+- For OpenAI, send the full tool list every turn and use `tool_choice.allowed_tools` to restrict the active subset, so the cached tools-prefix stays stable across turns even as policy narrows what the model may call.
+- New endpoints: `GET /api/agent/tool-profiles`, `GET/PUT /api/agent/tool-policy`. Webhook (HA voice) now runs with `source: webhook` so source-aware policy rules apply.
+
 ## 1.0.10
 
 - Fix blank local ingress page at `/ee1bc088_hestiaclaw` without a trailing slash by injecting an HTML `<base>` tag before relative asset URLs are parsed

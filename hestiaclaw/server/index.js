@@ -27,8 +27,8 @@ import { registerMemoryTools, registerDailyNoteTool } from './agent/tools/builti
 import { registerScheduleFollowup } from './agent/tools/builtin/schedule-followup.js'
 import { registerSkillsManagerTools } from './agent/tools/builtin/skills-manager.js'
 import { registerInvokeSkill } from './agent/tools/builtin/invoke-skill.js'
-import { registerHaFacade } from './agent/tools/builtin/home-assistant-facade.js'
 import { McpClientManager } from './agent/mcp/client.js'
+import { ToolPolicy } from './agent/tool-policy.js'
 import { runConsolidation } from './agent/memory-consolidation.js'
 import { initDb as initAutomationsDb } from './agent/automations/db.js'
 import { init as initAutomationsRunner } from './agent/automations/runner.js'
@@ -802,9 +802,6 @@ if (agentConfig) {
   registerScheduleFollowup(registry)
   registerSkillsManagerTools(registry, SKILLS_DIR)
   registerInvokeSkill(registry, SKILLS_DIR)
-  registerHaFacade(registry, {
-    approvalsAvailable: agentConfig.harness?.approvals !== false,
-  })
 
   mcpManager = new McpClientManager(registry)
   await mcpManager.init(agentConfig.mcpServers || {})
@@ -834,6 +831,7 @@ if (agentConfig) {
     const approvals = agentConfig.harness?.approvals === false
       ? null
       : new ApprovalManager({ timeoutMs: Number(agentConfig.harness?.approvalTimeoutMs) || 60000 })
+    const toolPolicy = new ToolPolicy(agentConfig.harness?.toolPolicy || {})
     const events = new AgentEventBus()
     const consolidate = () => runConsolidation({ provider, registry, memoryPath: MEMORY_PATH, historyPath: MEMORY_HISTORY_PATH })
     const agentRouter = createAgentRouter({
@@ -845,6 +843,7 @@ if (agentConfig) {
       systemPromptSource,
       mcpManager,
       approvals,
+      toolPolicy,
       events,
       settings: harnessSettings,
       skillsDir: SKILLS_DIR,
@@ -863,6 +862,7 @@ if (agentConfig) {
       registry,
       systemPrompt,
       events,
+      toolPolicy,
       settings: harnessSettings,
       skillsDir: SKILLS_DIR,
       memoryPath: MEMORY_PATH,

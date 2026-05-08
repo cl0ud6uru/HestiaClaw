@@ -108,6 +108,7 @@ export async function runAgentLoop(res, {
   dailyNotes = '',
   activeMemory = '',
   allowedTools = null,
+  toolPolicy = null,
   source = 'chat',
 }) {
   const isAnthropic = provider instanceof AnthropicProvider
@@ -167,7 +168,23 @@ export async function runAgentLoop(res, {
   const userTurn = { role: 'user', content: userMessage }
   const messages = [...history, userTurn]
 
-  const tools = registry.getDefinitions(allowedTools)
+  // Tool definitions: prefer toolPolicy (per-source visibility + allowedSources +
+  // approval modes); fall back to legacy allowedTools glob list when no policy.
+  // For OpenAI we send the full tool list and constrain via tool_choice.allowed_tools
+  // so the cached prefix stays stable across turns.
+  let tools, allowedToolNames = null
+  if (toolPolicy) {
+    const allMeta = registry.listTools()
+    if (isOpenAI) {
+      const cs = toolPolicy.cacheStableDefinitions(allMeta, source)
+      tools = cs.definitions
+      allowedToolNames = cs.allowedNames
+    } else {
+      tools = toolPolicy.visibleDefinitions(allMeta, source)
+    }
+  } else {
+    tools = registry.getDefinitions(allowedTools)
+  }
 
   let iterations = 0
   // These are the new messages generated this turn (for storage)
@@ -190,6 +207,7 @@ export async function runAgentLoop(res, {
         ...(settings.model ? { model: settings.model } : {}),
         ...(settings.reasoningEffort !== undefined ? { reasoningEffort: settings.reasoningEffort } : {}),
         ...(settings.thinkingBudget ? { thinkingBudget: settings.thinkingBudget } : {}),
+        ...(allowedToolNames ? { allowedToolNames } : {}),
       }
 
       for await (const event of provider.stream(messages, tools, streamOptions)) {
@@ -302,7 +320,19 @@ export async function runAgentLoop(res, {
           return decision
         }
         try {
-          if (toolMetadata?.requiresApproval) {
+          // Source / policy gate: refuse calls the policy says shouldn't
+          // execute from this source (model may try anyway when using OpenAI
+          // allowed_tools mode, since tools array contains the full list).
+          if (toolPolicy && toolMetadata) {
+            const gate = toolPolicy.canExecute(toolMetadata, source)
+            if (!gate.ok) {
+              throw new Error(`Tool "${tc.name}" not permitted from ${source}: ${gate.reason}`)
+            }
+          }
+          const policyApproval = toolPolicy && toolMetadata
+            ? toolPolicy.approvalRequired(toolMetadata, source)
+            : toolMetadata?.requiresApproval === true
+          if (policyApproval) {
             await requestApproval({
               name: tc.name,
               input: tc.input,

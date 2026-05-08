@@ -37,7 +37,7 @@ function entityInventorySummary(entities) {
   return `Home Assistant inventory: ${entities.length} entities\nAreas: ${areaStr || 'none'}\nDomains: ${domainStr}\nUse ha_search_entities or ask by name for specific devices.`
 }
 
-export function createWebhookRouter({ provider, session, registry, systemPrompt, events, settings = {}, skillsDir = null, memoryPath = null, soulPath = null, notesDir = null }) {
+export function createWebhookRouter({ provider, session, registry, systemPrompt, events, toolPolicy = null, settings = {}, skillsDir = null, memoryPath = null, soulPath = null, notesDir = null }) {
   const getWebhookSkills = skillsDir
     ? async () => (await loadSkills(skillsDir)).filter(s => s.webhookSafe)
     : () => Promise.resolve([])
@@ -151,8 +151,9 @@ export function createWebhookRouter({ provider, session, registry, systemPrompt,
       memorySummary,
       dailyNotes,
       activeMemory,
-      source: 'webhook',
       allowedTools: Array.isArray(settings.allowedTools) ? settings.allowedTools : null,
+      toolPolicy,
+      source: 'webhook',
       settings: {
         contextMaxMessages: settings.contextMaxMessages || 40,
         compactionEnabled: settings.compactionEnabled !== false,
