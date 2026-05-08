@@ -60,7 +60,7 @@ test('built-in prompt contains the critical policy sections', () => {
   const text = DEFAULT_SYSTEM_PROMPT
   assert.match(text, /## Memory Architecture/)
   assert.match(text, /Graphiti vs Home Assistant/)
-  assert.match(text, /## Home Assistant Device Control/)
+  assert.match(text, /## Home Assistant \(native ha-mcp tools\)/)
   assert.match(text, /hestia_user/)
   assert.match(text, /hestia_home/)
 })
@@ -68,5 +68,7 @@ test('built-in prompt contains the critical policy sections', () => {
 test('built-in prompt uses neutral wording for optional Graphiti tools', () => {
   // The prompt should not assume Graphiti is always installed.
   assert.match(DEFAULT_SYSTEM_PROMPT, /When Graphiti tools are available/)
-  assert.match(DEFAULT_SYSTEM_PROMPT, /When Home Assistant tools are available/)
+  // Home Assistant guidance now points at native ha-mcp tool names directly.
+  assert.match(DEFAULT_SYSTEM_PROMPT, /home-assistant__ha_search_entities/)
+  assert.match(DEFAULT_SYSTEM_PROMPT, /home-assistant__ha_call_service/)
 })

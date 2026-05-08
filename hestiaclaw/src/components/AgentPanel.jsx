@@ -74,6 +74,12 @@ export default function AgentPanel({ activeConversationTitle, onClose, onForkCon
   const [soul, setSoul] = useState('')
   const [savingSoul, setSavingSoul] = useState(false)
   const [soulMsg, setSoulMsg] = useState('')
+  const [policy, setPolicy] = useState(null)
+  const [policyTools, setPolicyTools] = useState([])
+  const [profiles, setProfiles] = useState([])
+  const [approvalModes, setApprovalModes] = useState(['default', 'never', 'writes', 'always', 'block'])
+  const [policyMsg, setPolicyMsg] = useState('')
+  const [savingPolicy, setSavingPolicy] = useState(false)
 
   const toolsBySource = useMemo(() => {
     const grouped = new Map()
@@ -182,9 +188,65 @@ export default function AgentPanel({ activeConversationTitle, onClose, onForkCon
     }
   }
 
+  const loadPolicy = async () => {
+    try {
+      const [profilesRes, policyRes] = await Promise.all([
+        fetch('/api/agent/tool-profiles'),
+        fetch('/api/agent/tool-policy?source=chat'),
+      ])
+      if (profilesRes.ok) {
+        const j = await profilesRes.json()
+        setProfiles(j.profiles || [])
+        if (Array.isArray(j.approvalModes)) setApprovalModes(j.approvalModes)
+      }
+      if (policyRes.ok) {
+        const j = await policyRes.json()
+        setPolicy(j.policy)
+        setPolicyTools(j.tools || [])
+      } else if (policyRes.status === 503) {
+        setPolicy(null)
+      }
+    } catch { /* non-fatal */ }
+  }
+
+  const updatePolicyOverride = (toolName, patch) => {
+    setPolicyTools(ts => ts.map(t => {
+      if (t.name !== toolName) return t
+      const next = { ...(t.override || {}), ...patch }
+      return { ...t, override: next }
+    }))
+  }
+
+  const savePolicy = async () => {
+    if (!policy) return
+    setSavingPolicy(true)
+    setPolicyMsg('')
+    try {
+      const overrides = {}
+      for (const t of policyTools) {
+        if (t.override && (t.override.enabled !== undefined || t.override.approval || t.override.allowedSources)) {
+          overrides[t.name] = t.override
+        }
+      }
+      const res = await fetch('/api/agent/tool-policy', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ profile: policy.profile, overrides }),
+      })
+      if (!res.ok) throw new Error('Save failed.')
+      setPolicyMsg('Policy applied.')
+      await loadPolicy()
+    } catch (err) {
+      setPolicyMsg(err instanceof Error ? err.message : 'Save failed.')
+    } finally {
+      setSavingPolicy(false)
+    }
+  }
+
   useEffect(() => {
     void Promise.resolve().then(loadConfig)
     void Promise.resolve().then(loadSoul)
+    void Promise.resolve().then(loadPolicy)
   }, [configVersion]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const toggleApprovals = async () => {
@@ -623,6 +685,56 @@ export default function AgentPanel({ activeConversationTitle, onClose, onForkCon
               </div>
             )}
           </section>
+
+          {policy && (
+            <section className="agent-panel__section">
+              <div className="agent-panel__section-title">
+                Tool Policy <span className="agent-panel__section-hint">profile + per-tool approval mode</span>
+              </div>
+              <div className="agent-panel__field-row">
+                <label className="agent-panel__field">
+                  <span>Profile</span>
+                  <select
+                    className="agent-panel__select"
+                    value={policy.profile}
+                    onChange={e => setPolicy(p => ({ ...p, profile: e.target.value }))}
+                  >
+                    {profiles.map(p => (
+                      <option key={p.id} value={p.id}>{p.name}</option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+              {profiles.find(p => p.id === policy.profile)?.description && (
+                <div className="agent-panel__filter-warning" style={{ background: 'transparent', border: 'none', opacity: 0.7 }}>
+                  {profiles.find(p => p.id === policy.profile).description}
+                </div>
+              )}
+              <div className="agent-panel__tool-filter">
+                {policyTools.map(t => (
+                  <div key={t.name} className="agent-panel__filter-tool" style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
+                    <span title={`${t.kind} · ${t.risk}${t.resolved?.reason ? ' — ' + t.resolved.reason : ''}`}>
+                      {t.resolved?.visible ? '●' : '○'} {t.name}
+                    </span>
+                    <select
+                      className="agent-panel__select"
+                      value={t.override?.approval || 'default'}
+                      onChange={e => updatePolicyOverride(t.name, { approval: e.target.value === 'default' ? undefined : e.target.value })}
+                      style={{ minWidth: 90 }}
+                    >
+                      {approvalModes.map(m => <option key={m} value={m}>{m}</option>)}
+                    </select>
+                  </div>
+                ))}
+              </div>
+              <div className="agent-panel__settings-footer agent-panel__settings-footer--inline">
+                {policyMsg && <span className="agent-panel__save-msg">{policyMsg}</span>}
+                <button className="agent-panel__ghost" type="button" onClick={savePolicy} disabled={savingPolicy}>
+                  {savingPolicy ? 'APPLYING…' : 'APPLY POLICY'}
+                </button>
+              </div>
+            </section>
+          )}
 
           <div className="agent-panel__settings-footer">
             {saveMsg && <span className={saving ? '' : 'agent-panel__save-msg'}>{saveMsg}</span>}

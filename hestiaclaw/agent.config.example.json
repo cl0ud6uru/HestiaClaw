@@ -8,16 +8,18 @@
     "approvalTimeoutMs": 60000,
     "compactionEnabled": true,
     "contextMaxMessages": 40,
-    "systemPromptLocked": true
+    "systemPromptLocked": true,
+    "toolPolicy": {
+      "profile": "home-control",
+      "overrides": {}
+    }
   },
   "mcpServers": {
     "graphiti": {
       "url": "http://localhost:8001/mcp"
     },
     "home-assistant": {
-      "url": "http://localhost:8002/mcp",
-      "role": "home-assistant",
-      "modelVisible": false
+      "url": "http://localhost:8002/mcp"
     }
   }
 }
