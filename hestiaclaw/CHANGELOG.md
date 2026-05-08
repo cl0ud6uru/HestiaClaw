@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.0.24
+
+- Memory writes no longer require approval by default. The `home-control`, `full-agent`, and `developer` tool profiles now ship with `approvalOverrides` that mark `write_memory`, `write_daily_note`, and `graphiti__add_memory` as `never`-approval — Hestia can record routine durable facts without an interrupt. Service calls and other writes still prompt as before.
+- Profile schema gains an optional `approvalOverrides: { toolName: mode }` map. Precedence is per-user override > profile override > profile default. Existing per-user overrides keep winning, so configurations from 1.0.23 still behave as set.
+- Sticky **APPROVAL NEEDED** banner now anchors above the chat input whenever a tool is waiting for approval, so the request stays visible even when the chat thread scrolls past the inline approval card. Critical for the HA add-on / mobile usage where the in-thread card was easy to miss.
+- When an approval times out (60 s + 2 s buffer), the chat now surfaces an explicit error message ("Approval for X timed out…") instead of failing silently, so the user knows what happened.
+- Defense-in-depth flush after every NDJSON event in the agent stream (`res.flush?.()`) so reverse proxies — notably HA ingress — can't sit on time-sensitive `approval_required` events.
+- Slash-command palette: **Tab** now completes the highlighted command name into the input (Claude-Code style); only **Enter** runs/sends. Arrow keys and Escape behavior unchanged.
+
 ## 1.0.23
 
 - Fix: Home Assistant tools were invisible to the model when `agent.config.json` carried the legacy `modelVisible: false` (or `role`) field on an MCP server entry. That mechanism existed to hide HA tools from the model while the orchestrator owned them; with the orchestrator removed, it just suppresses every HA tool. Both fields are now ignored with a one-line deprecation warning at startup; remove them from `agent.config.json` to silence it. Native `home-assistant__*` tools now show up in the policy editor and are callable.

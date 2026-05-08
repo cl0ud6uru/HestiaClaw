@@ -26,10 +26,15 @@ export function readDailyNotes(notesDir) {
 }
 
 /**
- * Emit a single NDJSON line to the response stream.
+ * Emit a single NDJSON line to the response stream. We attempt an immediate
+ * flush after every event so reverse proxies (notably HA ingress / nginx) can't
+ * sit on time-sensitive events like `approval_required`.
  */
 function emit(res, event) {
-  try { res.write(JSON.stringify(event) + '\n') } catch { /* response may already be closed */ }
+  try {
+    res.write(JSON.stringify(event) + '\n')
+    res.flush?.()
+  } catch { /* response may already be closed */ }
 }
 
 export function startStreamingResponse(res, contentType = 'application/x-ndjson') {

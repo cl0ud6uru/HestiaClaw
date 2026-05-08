@@ -3,6 +3,7 @@ import AccountPanel from './components/AccountPanel'
 import AgentPanel from './components/AgentPanel'
 import MemoryPanel from './components/MemoryPanel'
 import ChatBackground from './components/ChatBackground'
+import ApprovalBanner from './components/ApprovalBanner'
 import ChatInput from './components/ChatInput'
 import ChatMessage from './components/ChatMessage'
 import AutomationsView from './components/AutomationsView'
@@ -77,6 +78,7 @@ export default function App() {
   const [memoryPulseAt, setMemoryPulseAt] = useState(null)
   const [agentConfigVersion, setAgentConfigVersion] = useState(0)
   const [skills, setSkills] = useState([])
+  const [pendingApprovals, setPendingApprovals] = useState([])
   const [settingsBusy, setSettingsBusy] = useState(false)
   const [settingsError, setSettingsError] = useState('')
   const [settingsSuccess, setSettingsSuccess] = useState('')
@@ -638,6 +640,7 @@ export default function App() {
     if (!entry) return
     delete approvalResolvers.current[approvalId]
     updateMessages(entry.convId, prev => prev.filter(m => m.id !== `approval-${approvalId}`))
+    setPendingApprovals(prev => prev.filter(p => p.approvalId !== approvalId))
     entry.resolve(approved)
   }
 
@@ -778,6 +781,14 @@ export default function App() {
               kind: event.kind,
               streaming: false,
             }])
+            setPendingApprovals(prev => [...prev, {
+              approvalId: event.approvalId,
+              toolName: displayName,
+              input: event.input,
+              risk: event.risk,
+              kind: event.kind,
+              convId,
+            }])
             // Race user decision against the server-side approval timeout + 2s buffer.
             // If the server times out first it moves on; without this the stream reader
             // would block forever waiting for a button click that never comes.
@@ -787,7 +798,17 @@ export default function App() {
               approvalTimeoutHandle = setTimeout(() => {
                 if (approvalResolvers.current[event.approvalId]) {
                   delete approvalResolvers.current[event.approvalId]
-                  updateMessages(convId, prev => prev.filter(m => m.id !== `approval-${event.approvalId}`))
+                  updateMessages(convId, prev => [
+                    ...prev.filter(m => m.id !== `approval-${event.approvalId}`),
+                    {
+                      id: `approval-timeout-${event.approvalId}`,
+                      role: 'assistant',
+                      content: `Approval for **${displayName}** timed out. The action was not performed. Toggle approvals in the Agent Harness panel, or just reply "try again".`,
+                      streaming: false,
+                      isError: true,
+                    },
+                  ])
+                  setPendingApprovals(prev => prev.filter(p => p.approvalId !== event.approvalId))
                   resolve(null) // null = timed out, server already moved on
                 }
               }, (event.timeoutMs || 60000) + 2000)
@@ -1199,6 +1220,10 @@ export default function App() {
             {isThinking && <ThinkingAnimation activeTool={activeToolName} />}
             <div ref={bottomRef} />
           </main>
+          <ApprovalBanner
+            pending={pendingApprovals.filter(p => p.convId === activeConv?.id)}
+            onDecision={handleApprovalDecision}
+          />
           <ChatInput
             onSend={sendMessage}
             onCommand={handleCommand}

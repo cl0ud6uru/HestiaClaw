@@ -71,7 +71,17 @@ export default function ChatInput({
     if (paletteItems.length > 0) {
       if (e.key === 'ArrowDown') { e.preventDefault(); setPaletteIndex(i => (i + 1) % paletteItems.length); return }
       if (e.key === 'ArrowUp') { e.preventDefault(); setPaletteIndex(i => (i - 1 + paletteItems.length) % paletteItems.length); return }
-      if (e.key === 'Tab') { e.preventDefault(); selectPaletteItem(paletteItems[paletteIndex]); return }
+      // Tab completes the highlighted command name into the input — no execution.
+      // Match Claude Code style: hit Enter to actually run it.
+      if (e.key === 'Tab') {
+        e.preventDefault()
+        const item = paletteItems[paletteIndex]
+        if (!item) return
+        const completion = item.argumentHint ? `/${item.name} ${item.argumentHint}` : `/${item.name}`
+        setValue(completion)
+        setTimeout(() => textareaRef.current?.focus(), 0)
+        return
+      }
       if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); selectPaletteItem(paletteItems[paletteIndex]); return }
       if (e.key === 'Escape') { setValue(''); return }
     }

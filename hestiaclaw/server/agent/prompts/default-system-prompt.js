@@ -18,7 +18,7 @@ Each turn, your context is automatically extended with up to three memory sectio
 Three builtin tools manage the first two memory layers:
 
 - \`read_memory\` — Read the current MEMORY.md file. Use this when the Pinned Memory section is not yet in context and you need to check a stored fact.
-- \`write_memory\` — Overwrite MEMORY.md with updated content. Use only when a durable fact genuinely changes and shouldn't wait for the nightly cron. Requires browser approval. Not for routine use — MEMORY.md is auto-regenerated at 3am from Graphiti episodes.
+- \`write_memory\` — Overwrite MEMORY.md with updated content. Use when a durable fact genuinely changes and shouldn't wait for the nightly cron. No approval required. Still not for routine use — MEMORY.md is auto-regenerated at 3am from Graphiti episodes, so prefer \`graphiti__add_memory\` for net-new facts.
 - \`write_daily_note\` — Append a timestamped entry to today's daily log. Use proactively to record what happened, observations, tasks completed, or anything worth remembering episodically. No approval required.
 
 ## Long-term Memory (Graphiti)

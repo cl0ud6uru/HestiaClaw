@@ -70,6 +70,11 @@ export const TOOL_PROFILES = {
       'graphiti__add_memory',
     ],
     approvalDefault: 'writes',
+    approvalOverrides: {
+      write_memory: 'never',
+      write_daily_note: 'never',
+      graphiti__add_memory: 'never',
+    },
     sourceRules: {
       voice:   { riskBlock: ['high'] },
       webhook: { riskBlock: ['high'] },
@@ -82,6 +87,11 @@ export const TOOL_PROFILES = {
     include: ['*'],
     exclude: ['graphiti__clear_graph'],
     approvalDefault: 'writes',
+    approvalOverrides: {
+      write_memory: 'never',
+      write_daily_note: 'never',
+      graphiti__add_memory: 'never',
+    },
     sourceRules: {
       voice:   { riskBlock: ['high'] },
       webhook: { riskBlock: ['high'] },
@@ -93,6 +103,11 @@ export const TOOL_PROFILES = {
     description: 'All tools, no source restrictions. Approval still applies to high-risk by default.',
     include: ['*'],
     approvalDefault: 'default',
+    approvalOverrides: {
+      write_memory: 'never',
+      write_daily_note: 'never',
+      graphiti__add_memory: 'never',
+    },
     sourceRules: {},
   },
   custom: {
@@ -184,8 +199,13 @@ export class ToolPolicy {
     const kindBlocked = sourceRule.kindBlock?.includes(tool.kind) || false
     const riskBlocked = sourceRule.riskBlock?.includes(tool.risk) || false
 
-    // Approval mode resolution
-    const mode = override.approval || profile.approvalDefault || 'default'
+    // Approval mode resolution. Precedence:
+    //   per-user override > profile.approvalOverrides[name] > profile.approvalDefault > 'default'
+    const profileOverride = profile.approvalOverrides?.[name]
+    const mode = override.approval
+      || (APPROVAL_MODES.includes(profileOverride) ? profileOverride : null)
+      || profile.approvalDefault
+      || 'default'
     let approvalRequired = false
     if (mode === 'always') approvalRequired = true
     else if (mode === 'never') approvalRequired = false

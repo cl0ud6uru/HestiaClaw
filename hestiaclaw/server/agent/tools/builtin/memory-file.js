@@ -31,7 +31,7 @@ export function registerMemoryTools(registry, memoryPath, historyPath = null) {
       await writeMemory(memoryPath, historyPath, { newContent: String(content), source: 'agent' })
       return 'MEMORY.md updated successfully.'
     },
-    { source: 'builtin', kind: 'write', risk: 'medium', requiresApproval: true },
+    { source: 'builtin', kind: 'write', risk: 'low', requiresApproval: false },
   )
 }
 
