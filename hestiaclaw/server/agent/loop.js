@@ -85,7 +85,7 @@ function buildEffectiveSystemPrompt(systemPrompt, summary, skills = [], memorySu
   }
   if (onDemandSkills.length > 0) {
     const menu = onDemandSkills.map(s => `- /${s.name}: ${s.description}`).join('\n')
-    prompt += `\n\n## Extended Skills (load before use)\nCall \`invoke_skill\` with the skill name to load full instructions before executing.\n\n${menu}`
+    prompt += `\n\n## Extended Skills (load before use)\nCall \`invoke_skill\` with one of the skill names listed below to load full instructions before executing. Do not call \`invoke_skill\` with names not on this list — proceed with the built-in policies above instead.\n\n${menu}`
   }
 
   if (summary) prompt += `\n\nConversation summary so far:\n${summary}`

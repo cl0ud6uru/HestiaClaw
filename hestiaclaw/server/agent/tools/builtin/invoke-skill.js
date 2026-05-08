@@ -4,7 +4,7 @@ export function registerInvokeSkill(registry, skillsDir) {
   if (!skillsDir) return
   registry.register(
     'invoke_skill',
-    'Load full instructions for an extended skill. Call this before executing a skill listed under Extended Skills.',
+    'Load full instructions for an extended skill. Only call this with a `name` that appears in the Extended Skills menu in the system prompt. Do not invent skill names — if no matching skill is listed, proceed without one.',
     {
       type: 'object',
       properties: {

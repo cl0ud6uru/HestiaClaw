@@ -47,6 +47,9 @@ services:
       HOMEASSISTANT_TOKEN: "${HA_TOKEN}"
       ENABLE_WEBSOCKET: "true"
       LOG_LEVEL: "INFO"
+      HAMCP_ENABLE_FILESYSTEM_TOOLS: "true"
+      ENABLE_YAML_CONFIG_EDITING: "true"
+      HAMCP_ENABLE_CUSTOM_COMPONENT_INTEGRATION: "true"
     restart: unless-stopped
 
 volumes:

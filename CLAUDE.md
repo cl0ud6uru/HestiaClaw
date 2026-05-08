@@ -32,7 +32,7 @@ cd hestiaclaw && npm run dev
 **Services:**
 - `neo4j` — `neo4j:2026-community` with GDS plugin auto-installed (`NEO4J_PLUGINS`); browser at `http://localhost:7474`
 - `graphiti` — `zepai/graphiti-mcp:latest`; MCP endpoint at `http://localhost:8001/mcp` (dev only — dev compose maps host 8001 → container 8000)
-- `ha-mcp` — `ghcr.io/homeassistant-ai/ha-mcp:latest`; 87+ Home Assistant tools; MCP endpoint at `http://localhost:8002/mcp` (dev, host port 8002 → container 8086) / `http://ha-mcp:8086/mcp` (prod). Reads `HA_URL` + `HA_TOKEN` from `.env`, remapped to `HOMEASSISTANT_URL`/`HOMEASSISTANT_TOKEN` inside the container.
+- `ha-mcp` — `ghcr.io/homeassistant-ai/ha-mcp:latest`; 87+ Home Assistant tools; MCP endpoint at `http://localhost:8002/mcp` (dev, host port 8002 → container 8086) / `http://ha-mcp:8086/mcp` (prod). Reads `HA_URL` + `HA_TOKEN` from `.env`, remapped to `HOMEASSISTANT_URL`/`HOMEASSISTANT_TOKEN` inside the container. Both compose files also set `HAMCP_ENABLE_FILESYSTEM_TOOLS`, `ENABLE_YAML_CONFIG_EDITING`, and `HAMCP_ENABLE_CUSTOM_COMPONENT_INTEGRATION` to `"true"` so the five filesystem/YAML tools (`ha_list_files`, `ha_read_file`, `ha_write_file`, `ha_delete_file`, `ha_config_set_yaml`) register — they only function once the companion HACS integration `ha_mcp_tools` is installed inside Home Assistant (custom repo `https://github.com/homeassistant-ai/ha-mcp`, category Integration). Without that companion integration the tools are visible but error on use.
 - `hestia` — production build of this app (production compose only)
 
 **MCP service URLs:**
